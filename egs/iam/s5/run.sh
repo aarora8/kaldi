@@ -17,9 +17,7 @@ fi
 mkdir -p $data_dir/{train,val_1,val_2,test}/data
 if [ $stage -le 1 ]; then
   for f in train val_1 val_2 test; do
-    local/make_feature_vect.py $data_dir/$f --scale-size 40 | \
-      copy-feats --compress=true --compression-method=7 \
-      ark:- ark,scp:$data_dir/$f/data/images.ark,$data_dir/$f/feats.scp || exit 1
+    local/extract_feature.sh --cmd "$train_cmd" --nj 80 $data_dir/$f 40 || exit 1
 
     steps/compute_cmvn_stats.sh $data_dir/$f || exit 1;
   done
@@ -158,8 +156,8 @@ affix_chain=1b_chainali
 nnet3_affix=fsf4
 common_egs_dir=$exp_dir/chainfsf4/cnn1a_1/egs
 
-if [ $stage -le 130 ]; then
-  local/chain/run_cnn_1a.sh --stage 4 \
+if [ $stage -le 13 ]; then
+  local/chain/run_cnn_1a.sh --stage 0 \
    --gmm tri3_${tri3_affix} \
    --ali tri3_ali_${tri3_affix} \
    --nnet3_affix $nnet3_affix \
