@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(
     description="""Generates and saves the feature vectors""")
 parser.add_argument(
     'dir', type=str, help='directory of images.scp and is also output directory')
-parser.add_argument('--seg', type=str, default='1',
+parser.add_argument('--job', type=str, default='-1',
                     help='JOB number of images.JOB.scp if run in parallel mode')
 parser.add_argument('--out-ark', type=str, default='-',
                     help='where to write the output feature file')
@@ -252,7 +252,11 @@ with open(image_file) as image_fh:
         path = uttID_path_vect[1]
         uttID_path_dict[imageID] = path
 
-scp_name = 'images.scp'
+if args.job == -1:  # TODO
+    scp_name = 'images.scp'  # non parallel
+else:
+    scp_name = 'images' + str(job) + 'scp'  # parallel
+
 data_list_path = os.path.join(args.dir, 'backup', scp_name)
 
 if args.out_ark == '-':
