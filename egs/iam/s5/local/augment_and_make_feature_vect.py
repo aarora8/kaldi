@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import random
 import argparse
 import os
 import sys
@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(
     description="""Generates and saves the feature vectors""")
 parser.add_argument(
     'dir', type=str, help='directory of images.scp and is also output directory')
-parser.add_argument('--job', type=str, default='-1',
+parser.add_argument('--seg', type=str, default='1',
                     help='JOB number of images.JOB.scp if run in parallel mode')
 parser.add_argument('--out-ark', type=str, default='-',
                     help='where to write the output feature file')
@@ -23,6 +23,8 @@ parser.add_argument('--scale-size', type=int, default=40,
                     help='size to scale the height of all images')
 parser.add_argument('--padding', type=int, default=5,
                     help='size to scale the height of all images')
+parser.add_argument('--vertical-shift', type=int, default=10,
+                    help='total number of padding pixel per column')
 args = parser.parse_args()
 
 
@@ -178,18 +180,94 @@ def deslant(im, shear):
     return sheared_im
 
 
-# main #
-if args.job != '-1':  # do parallel jobs
-    scp_name = 'images.' + args.job + '.scp'
-else:  # no parallel
-    scp_name = 'images.scp'
+def vertical_shift(im, mode='mid'):
+    total = args.vertical_shift
+    if mode == 'mid':
+        top = total / 2
+        bottom = total - top
+    elif mode == 'top':  # more padding on top
+        top = random.randint(total / 2, total)
+        bottom = total - top
+    elif mode == 'bottom':  # more padding on bottom
+        top = random.randint(0, total / 2)
+        bottom = total - top
+    width = im.shape[1]
+    im_pad = np.concatenate(
+        (255 * np.ones((top, width), dtype=int), im), axis=0)
+    im_pad = np.concatenate(
+        (im_pad, 255 * np.ones((bottom, width), dtype=int)), axis=0)
+    return im_pad
 
-data_list_path = os.path.join(args.dir, scp_name)
+
+def image_augment(im, out_fh, image_id):
+    random.seed(1)
+    shift_setting = ['mid', 'top', 'bottom']
+    image_shift_id = []
+    for i in range(3):
+        image_shift_id.append(image_id + '_shift' + str(i + 1))
+        im_shift = vertical_shift(im, shift_setting[i])
+        im_scaled = get_scaled_image(im_shift)
+        data = np.transpose(im_scaled, (1, 0))
+        data = np.divide(data, 255.0)
+        new_scp_list.append(image_id + '_shift' + str(i + 1))
+        write_kaldi_matrix(out_fh, data, image_shift_id[i])
+
+
+# main #
+new_scp_list = list()
+text_file = os.path.join(args.dir, 'backup', 'text.txt')
+text_dict = dict()  # stores imageID and text
+
+with open(text_file) as text_fh:
+    for uttID_text in text_fh:
+        uttID_text = uttID_text.strip()
+        uttID_text_vect = uttID_text.split(" ")
+        uttID = uttID_text_vect[0]
+        imageID = uttID.split("_")[1]
+        text_vect = uttID_text_vect[1:]
+        text = " ".join(text_vect)
+        text_dict[imageID] = text
+
+utt2spk_file = os.path.join(args.dir, 'backup', 'utt2spk')
+uttID_spk_dict = dict()  # stores imageID and speaker
+
+with open(utt2spk_file) as utt2spk_fh:
+    for uttID_spk in utt2spk_fh:
+        uttID_spk = uttID_spk.strip()
+        uttID_spk_vect = uttID_spk.split(" ")
+        uttID = uttID_spk_vect[0]
+        imageID = uttID.split("_")[1]
+        spk = uttID_spk_vect[1]
+        uttID_spk_dict[imageID] = spk
+
+image_file = os.path.join(args.dir, 'backup', 'images.scp')
+uttID_path_dict = dict()  # stores imageID and image path
+
+with open(image_file) as image_fh:
+    for uttID_path in image_fh:
+        uttID_path = uttID_path.strip()
+        uttID_path_vect = uttID_path.split(" ")
+        uttID = uttID_path_vect[0]
+        imageID = uttID.split("_")[1]
+        path = uttID_path_vect[1]
+        uttID_path_dict[imageID] = path
+
+scp_name = 'images.scp'
+data_list_path = os.path.join(args.dir, 'backup', scp_name)
 
 if args.out_ark == '-':
     out_fh = sys.stdout
 else:
     out_fh = open(args.out_ark, 'wb')
+
+text_file = os.path.join(args.dir, 'text.txt')
+text_fh = open(text_file, 'w+')
+
+utt2spk_file = os.path.join(args.dir, 'utt2spk')
+utt2spk_fh = open(utt2spk_file, 'w+')
+
+image_file = os.path.join(args.dir, 'images.scp')
+image_fh = open(image_file, 'w+')
 
 with open(data_list_path) as f:
     for line in f:
@@ -201,7 +279,10 @@ with open(data_list_path) as f:
         #im_contrast = contrast_normalization(im, 0.05, 0.2)
         #shear = (find_slant(im_contrast) / 360.0) * 2 * math.pi
         im_scaled = get_scaled_image(im)
-        #im_sheared = deslant(im_scaled, shear)
-        data = np.transpose(im_scaled, (1, 0))
-        data = np.divide(data, 255.0)
-        write_kaldi_matrix(out_fh, data, image_id)
+        image_augment(im_scaled, out_fh, image_id)
+
+for uttID in new_scp_list:
+    imageID = uttID.split("_")[1]
+    text_fh.write(uttID + ' ' + text_dict[imageID] + '\n')
+    utt2spk_fh.write(uttID + ' ' + uttID_spk_dict[imageID] + '\n')
+    image_fh.write(uttID + ' ' + uttID_path_dict[imageID] + '\n')
