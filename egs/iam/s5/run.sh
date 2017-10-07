@@ -6,7 +6,6 @@ color=1
 data_dir=data
 exp_dir=exp
 augment=true
-augment=false
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . utils/parse_options.sh  # e.g. this parses the --stage option if supplied.
@@ -17,6 +16,7 @@ if [ $stage -le 0 ]; then
 fi
 mkdir -p $data_dir/{train,test}/data
 
+
 if [ $stage -le 1 ]; then
   local/make_feature_vect.py $data_dir/test --scale-size 40 | \
     copy-feats --compress=true --compression-method=7 \
@@ -26,7 +26,7 @@ if [ $stage -le 1 ]; then
   if [ $augment = true ]; then
     # create a backup directory to store text, utt2spk and image.scp file
     mkdir -p $data_dir/train/backup
-    mv $data_dir/train/text.txt $data_dir/train/utt2spk $data_dir/train/images.scp $data_dir/train/backup/
+    mv $data_dir/train/text $data_dir/train/utt2spk $data_dir/train/images.scp $data_dir/train/backup/
     local/augment_and_make_feature_vect.py $data_dir/train --scale-size 40 --vertical-shift 10 | \
       copy-feats --compress=true --compression-method=7 \
       ark:- ark,scp:$data_dir/train/data/images.ark,$data_dir/train/feats.scp || exit 1
