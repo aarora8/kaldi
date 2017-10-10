@@ -11,7 +11,6 @@ augment=false
 . utils/parse_options.sh  # e.g. this parses the --stage option if supplied.
 
 if [ $stage -le 0 ]; then
-  # data preparation
   local/prepare_data.sh --nj $nj --dir $data_dir
 fi
 mkdir -p $data_dir/{train,test}/data

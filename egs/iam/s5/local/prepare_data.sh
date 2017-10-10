@@ -10,6 +10,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 #download dir
+add_val_data_train=false
 dl_dir=data/download
 lines=$dl_dir/lines
 xml=$dl_dir/xml
@@ -97,11 +98,32 @@ else
 fi
 
 mkdir -p $dir/{train,test}
+file_name=largeWriterIndependentTextLineRecognitionTask
+testset=testset.txt
+trainset=trainset.txt
+val1=validationset1.txt
+val2=validationset2.txt
+test_path="$dl_dir/$file_name/$testset"
+train_path="$dl_dir/$file_name/$trainset"
+val1_path="$dl_dir/$file_name/$val1"
+val2_path="$dl_dir/$file_name/$val2"
+
+new_train_set=new_trainset.txt
+new_test_set=new_testset.txt
+new_train_path="$dir/$new_train_set"
+new_test_path="$dir/$new_test_set"
+
+if [ $add_val_data_train = true ]; then
+ cat $train_path $val1_path $val2_path > $new_train_path
+ cat $test_path > $new_test_path
+else
+ cat $train_path > $new_train_path
+ cat $test_path > $new_test_path
+fi
+
 if [ $stage -le 0 ]; then
-  local/process_data.py $dl_dir $dir/train --dataset trainset --model_type word || exit 1
-  #local/process_data.py $dl_dir $dir/train --dataset validationset1 --model_type word || exit 1
-  #local/process_data.py $dl_dir $dir/train --dataset validationset2 --model_type word || exit 1
-  local/process_data.py $dl_dir $dir/test --dataset testset --model_type word || exit 1
+  local/process_data.py $dl_dir $dir/train $dir --dataset new_trainset --model_type word || exit 1
+  local/process_data.py $dl_dir $dir/test $dir --dataset new_testset --model_type word || exit 1
 
   utils/utt2spk_to_spk2utt.pl $dir/train/utt2spk > $dir/train/spk2utt
   utils/utt2spk_to_spk2utt.pl $dir/test/utt2spk > $dir/test/spk2utt
