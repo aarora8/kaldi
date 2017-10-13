@@ -43,6 +43,10 @@ unk_word_dict = dict()
 count=0
 for line in input_fh:
   line_vect = line.strip().split("\t")
+  if len(line_vect) < 6:
+    print "IndexError"
+    print line_vect
+    continue
   uttID = line_vect[0]
   word = line_vect[4]
   phones = line_vect[5]
