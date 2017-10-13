@@ -97,7 +97,7 @@ else
   echo Done downloading brown corpus
 fi
 
-mkdir -p $dir/{train,test}
+mkdir -p $dir/{train,test,val}
 file_name=largeWriterIndependentTextLineRecognitionTask
 testset=testset.txt
 trainset=trainset.txt
@@ -110,20 +110,25 @@ val2_path="$dl_dir/$file_name/$val2"
 
 new_train_set=new_trainset.txt
 new_test_set=new_testset.txt
+new_val_set=new_valset.txt
 new_train_path="$dir/$new_train_set"
 new_test_path="$dir/$new_test_set"
+new_val_path="$dir/$new_val_set"
 
 if [ $add_val_data_train = true ]; then
  cat $train_path $val1_path $val2_path > $new_train_path
  cat $test_path > $new_test_path
+ cat $val1_path $val2_path > $new_val_path
 else
  cat $train_path > $new_train_path
  cat $test_path > $new_test_path
+ cat $val1_path $val2_path > $new_val_path
 fi
 
 if [ $stage -le 0 ]; then
   local/process_data.py $dl_dir $dir/train $dir --dataset new_trainset --model_type word || exit 1
   local/process_data.py $dl_dir $dir/test $dir --dataset new_testset --model_type word || exit 1
+  local/process_data.py $dl_dir $dir/val $dir --dataset new_valset --model_type word || exit 1
 
   utils/utt2spk_to_spk2utt.pl $dir/train/utt2spk > $dir/train/spk2utt
   utils/utt2spk_to_spk2utt.pl $dir/test/utt2spk > $dir/test/spk2utt

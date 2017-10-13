@@ -16,7 +16,7 @@ parser.add_argument('out_dir', type=str,
 parser.add_argument('dataset_dir', type=str,
                     help='directory containing dataset')
 parser.add_argument('--dataset', type=str, default='new_trainset',
-                    choices=['new_trainset', 'new_testset'],
+                    choices=['new_trainset', 'new_testset','new_valset'],
                     help='choose new_trainset, testset')
 parser.add_argument('--model_type', type=str,default='word',
                     choices=['word', 'character'],
