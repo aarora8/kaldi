@@ -44,6 +44,7 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 
+
 if ! cuda-compiled; then
   cat <<EOF && exit 1
 This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
@@ -130,6 +131,7 @@ if [ $stage -le 4 ]; then
   common2="required-time-offsets=0 height-offsets=-2,-1,0,1,2 num-filters-out=70"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
+
   input dim=50 name=input
 
   conv-relu-batchnorm-layer name=cnn1 height-in=50 height-out=50 time-offsets=-3,-2,-1,0,1,2,3 $common1

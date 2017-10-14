@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-utils/lang/make_unk_lm.sh --ngram-order 3 --num-extra-ngrams 8300 data/train/dict exp/unk_lang_model
+utils/lang/make_unk_lm.sh --ngram-order 3 --num-extra-ngrams 7500 data/train/dict exp/unk_lang_model
 
 utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 \
   --unk-fst exp/unk_lang_model/unk_fst.txt data/train/dict "<unk>" data/lang/temp data/lang_unk

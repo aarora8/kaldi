@@ -5,7 +5,7 @@ import os
 import sys
 
 parser = argparse.ArgumentParser(
-    description="""Creates the list of characters and words in lexicon""")
+    description="""Creates the list of characters and wor                                 ds in lexicon""")
 parser.add_argument('database_path', type=str, help='path to train text file')
 parser.add_argument('test_text', type=str,
                     help='path to test text file to include it in lexicon')
@@ -40,7 +40,6 @@ if args.test_text > 1:
                 entry = entry.replace("#", "<HASH>")
                 if line_vect[i]:
                     lex[line_vect[i]] = entry
-
 
 lex_file = os.path.join(args.dir, 'lexicon.txt')
 lex_fh = open(lex_file, 'w+')

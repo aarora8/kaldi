@@ -7,8 +7,8 @@ import numpy as np
 from scipy import misc
 import xml.dom.minidom as minidom
 
-parser = argparse.ArgumentParser(
-    description="""Creates text utt2spk and image file """)
+parser = argparse.ArgumentParser(description="""Creates text utt2spk 
+                                                and image file """)
 parser.add_argument('database_path', type=str,
                     help='path to downloaded iam data')
 parser.add_argument('out_dir', type=str,
@@ -24,16 +24,15 @@ args = parser.parse_args()
 
 ### main ###
 text_file = os.path.join(args.out_dir + '/', 'text')
-text_fh = open(text_file, 'a+')
+text_fh = open(text_file, 'w')
 
 utt2spk_file = os.path.join(args.out_dir + '/', 'utt2spk')
-utt2spk_fh = open(utt2spk_file, 'a+')
+utt2spk_fh = open(utt2spk_file, 'w')
 
 image_file = os.path.join(args.out_dir + '/', 'images.scp')
-image_fh = open(image_file, 'a+')
+image_fh = open(image_file, 'w')
 
-dataset_path = os.path.join(args.database_path,
-                            'largeWriterIndependentTextLineRecognitionTask',
+dataset_path = os.path.join(args.dataset_dir,
                             args.dataset + '.txt')
 
 text_file_path = os.path.join(args.database_path,

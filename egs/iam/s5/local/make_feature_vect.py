@@ -45,8 +45,8 @@ def write_kaldi_matrix(file_handle, matrix, key):
 
 def get_scaled_image(im):
     scale_size = args.scale_size
-    sx = im.shape[1]  # width
-    sy = im.shape[0]  # height
+    sx = im.shape[1]
+    sy = im.shape[0]
     scale = (1.0 * scale_size) / sy
     nx = int(scale_size)
     ny = int(scale * sx)
@@ -198,10 +198,11 @@ with open(data_list_path) as f:
         image_id = line_vect[0]
         image_path = line_vect[1]
         im = misc.imread(image_path)
-        #im_contrast = contrast_normalization(im, 0.05, 0.2)
-        #shear = (find_slant(im_contrast) / 360.0) * 2 * math.pi
-        im_scaled = get_scaled_image(im)
-        #im_sheared = deslant(im_scaled, shear)
-        data = np.transpose(im_scaled, (1, 0))
-        data = np.divide(data, 255.0)
-        write_kaldi_matrix(out_fh, data, image_id)
+
+    #im_contrast = contrast_normalization(im, 0.05, 0.2)
+    #shear = (find_slant(im_contrast) / 360.0) * 2 * math.pi
+    im_scaled = get_scaled_image(im)
+    #im_sheared = deslant(im_scaled, shear)
+    data = np.transpose(im_scaled, (1, 0))
+    data = np.divide(data, 255.0)
+    write_kaldi_matrix(out_fh, data, image_id)
