@@ -151,12 +151,16 @@ if [ $stage -le 12 ]; then
     $exp_dir/tri3_ali
 fi
 
-affix=1a
+
+affix=_aug
+nnet3_affix=aug_50
+
 if [ $stage -le 13 ]; then
   local/chain/run_cnn_1a.sh --stage 0 \
    --gmm tri3 \
    --ali tri3_ali \
    --affix $affix \
+   --nnet3_affix $nnet3_affix \
    --lang_test lang_unk
 fi
 

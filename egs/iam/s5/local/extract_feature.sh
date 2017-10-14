@@ -12,6 +12,7 @@ data=$1
 height=$2
 featdir=$data/data
 logdir=$data/log
+mkdir -p $logdir
 
 # make $featdir an absolute pathname
 featdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $featdir ${PWD}`
@@ -35,7 +36,7 @@ utils/split_scp.pl $scp $split_scps || exit 1;
 # utterances that have bad wave data.
 
 $cmd JOB=1:$nj $logdir/extract_feature.JOB.log \
-  local/make_feature_vect.py $logdir JOB --scale-size $height \| \
+  local/make_feature_vect_deslant.py $logdir --job JOB --scale-size $height \| \
     copy-feats --compress=$compress --compression-method=7 ark:- \
     ark,scp:$featdir/images.JOB.ark,$featdir/images.JOB.scp \
     || exit 1;
