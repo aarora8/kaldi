@@ -8,18 +8,19 @@ from scipy import misc
 import xml.dom.minidom as minidom
 
 parser = argparse.ArgumentParser(description="""Creates text utt2spk 
-                                                and image file """)
+                                 and image file """)
 parser.add_argument('database_path', type=str,
                     help='path to downloaded iam data')
 parser.add_argument('out_dir', type=str,
                     help='where to write output files')
-parser.add_argument('--dataset', type=str, default='trainset',
-                    choices=['trainset', 'testset',
-                             'validationset1', 'validationset2'],
-                    help='choose trainset, testset, validationset1, or validationset2')
 parser.add_argument('--model_type', type=str, default='word',
                     choices=['word', 'character'],
                     help='word model or character model')
+parser.add_argument('dataset_dir', type=str,
+                    help='directory containing dataset')
+parser.add_argument('--dataset', type=str, default='new_trainset',
+                    choices=['new_trainset', 'new_testset', 'new_valset'],
+                    help='choose new_trainset, new_testset, new_valset')
 args = parser.parse_args()
 
 ### main ###

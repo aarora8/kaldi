@@ -206,12 +206,12 @@ def image_augment(im, out_fh, image_id):
     for i in range(3):
         image_shift_id.append(image_id + '_shift' + str(i + 1))
         im_shift = vertical_shift(im, shift_setting[i])
-    # im_scaled = get_scaled_image(im_shift)
-    # data = np.transpose(im_scaled, (1, 0))
-    data = np.transpose(im_shift, (1, 0))
-    data = np.divide(data, 255.0)
-    new_scp_list.append(image_id + '_shift' + str(i + 1))
-    write_kaldi_matrix(out_fh, data, image_shift_id[i])
+        # im_scaled = get_scaled_image(im_shift)
+        # data = np.transpose(im_scaled, (1, 0))
+        data = np.transpose(im_shift, (1, 0))
+        data = np.divide(data, 255.0)
+        new_scp_list.append(image_id + '_shift' + str(i + 1))
+        write_kaldi_matrix(out_fh, data, image_shift_id[i])
 
 
 # main #
@@ -283,10 +283,10 @@ with open(data_list_path) as f:
         image_id = line_vect[0]
         image_path = line_vect[1]
         im = misc.imread(image_path)
-# im_contrast = contrast_normalization(im, 0.05, 0.2)
-# shear = (find_slant(im_contrast) / 360.0) * 2 * math.pi
-    im_scaled = get_scaled_image(im)
-    image_augment(im_scaled, out_fh, image_id)
+#       im_contrast = contrast_normalization(im, 0.05, 0.2)
+        # shear = (find_slant(im_contrast) / 360.0) * 2 * math.pi
+        im_scaled = get_scaled_image(im)
+        image_augment(im_scaled, out_fh, image_id)
 
 for uttID in new_scp_list:
     imageID = uttID.split("_")[1]

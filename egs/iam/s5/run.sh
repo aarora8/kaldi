@@ -5,11 +5,8 @@ nj=20
 color=1
 data_dir=data
 exp_dir=exp
-<<<<<<< HEAD
 augment=true
-=======
-augment=false
->>>>>>> ashish/iam
+
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . utils/parse_options.sh  # e.g. this parses the --stage option if supplied.
@@ -18,7 +15,6 @@ if [ $stage -le 0 ]; then
   # data preparation
   local/prepare_data.sh --nj $nj --dir $data_dir
 fi
-mkdir -p $data_dir/{train,test}/data
 
 if [ $stage -le 1 ]; then
   local/make_feature_vect.py $data_dir/test --scale-size 40 | \
@@ -154,6 +150,7 @@ if [ $stage -le 12 ]; then
     $exp_dir/tri3_ali
 fi
 
+exit 0
 
 affix=_aug
 nnet3_affix=aug_50
