@@ -71,6 +71,7 @@ if [ $stage -le 0 ]; then
   # we can later fold the dev data into this.
   head -n $[$num_dev_sentences] < data/train/text | cut -d " " -f 2- >  ${dir}/data/text/ted.txt
 
+
   # for reporting perplexities, we'll use the "real" dev set.
   # (a subset of the training data is used as ${dir}/data/text/ted.txt to work
   # out interpolation weights.

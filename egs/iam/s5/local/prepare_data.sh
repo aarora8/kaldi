@@ -130,6 +130,7 @@ if [ $stage -le 0 ]; then
   local/process_data.py $dl_dir $dir/test $dir --dataset new_testset --model_type word || exit 1
   local/process_data.py $dl_dir $dir/val $dir --dataset new_valset --model_type word || exit 1
 
+
   utils/utt2spk_to_spk2utt.pl $dir/train/utt2spk > $dir/train/spk2utt
   utils/utt2spk_to_spk2utt.pl $dir/test/utt2spk > $dir/test/spk2utt
 fi

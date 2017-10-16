@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(
     description="""Generates and saves the feature vectors""")
 parser.add_argument(
     'dir', type=str, help='directory of images.scp and is also output directory')
-parser.add_argument('--seg', type=str, default='1',
+parser.add_argument('--job', type=int, default='-1',
                     help='JOB number of images.JOB.scp if run in parallel mode')
 parser.add_argument('--out-ark', type=str, default='-',
                     help='where to write the output feature file')
@@ -152,10 +152,8 @@ def find_slant(im):
                         end_point = i
                         break
                 length = end_point - start_point + 1
-                #print(number, length)
                 if length == number:
                     sum = sum + number * number
-        #print(shear_degree, sum)
         if sum > sum_max:
             sum_max = sum
             slant_degree = shear_degree
@@ -193,9 +191,11 @@ def vertical_shift(im, mode='mid'):
         bottom = total - top
     width = im.shape[1]
     im_pad = np.concatenate(
-        (255 * np.ones((top, width), dtype=int), im), axis=0)
+        (255 * np.ones((top, width), dtype=int) -
+         np.random.normal(2, 1, (top, width)).astype(int), im), axis=0)
     im_pad = np.concatenate(
-        (im_pad, 255 * np.ones((bottom, width), dtype=int)), axis=0)
+        (im_pad, 255 * np.ones((bottom, width), dtype=int) -
+         np.random.normal(2, 1, (bottom, width)).astype(int)), axis=0)
     return im_pad
 
 
@@ -206,14 +206,16 @@ def image_augment(im, out_fh, image_id):
     for i in range(3):
         image_shift_id.append(image_id + '_shift' + str(i + 1))
         im_shift = vertical_shift(im, shift_setting[i])
-        im_scaled = get_scaled_image(im_shift)
-        data = np.transpose(im_scaled, (1, 0))
+        # im_scaled = get_scaled_image(im_shift)
+        # data = np.transpose(im_scaled, (1, 0))
+        data = np.transpose(im_shift, (1, 0))
         data = np.divide(data, 255.0)
         new_scp_list.append(image_id + '_shift' + str(i + 1))
         write_kaldi_matrix(out_fh, data, image_shift_id[i])
 
 
 # main #
+random.seed(1)
 new_scp_list = list()
 text_file = os.path.join(args.dir, 'backup', 'text')
 text_dict = dict()  # stores imageID and text
@@ -252,7 +254,12 @@ with open(image_file) as image_fh:
         path = uttID_path_vect[1]
         uttID_path_dict[imageID] = path
 
-scp_name = 'images.scp'
+
+if args.job == -1:  # TODO
+    scp_name = 'images.scp'  # non parallel
+else:
+    scp_name = 'images.' + str(args.job) + '.scp'  # parallel
+
 data_list_path = os.path.join(args.dir, 'backup', scp_name)
 
 if args.out_ark == '-':
@@ -276,8 +283,8 @@ with open(data_list_path) as f:
         image_id = line_vect[0]
         image_path = line_vect[1]
         im = misc.imread(image_path)
-        #im_contrast = contrast_normalization(im, 0.05, 0.2)
-        #shear = (find_slant(im_contrast) / 360.0) * 2 * math.pi
+#       im_contrast = contrast_normalization(im, 0.05, 0.2)
+        # shear = (find_slant(im_contrast) / 360.0) * 2 * math.pi
         im_scaled = get_scaled_image(im)
         image_augment(im_scaled, out_fh, image_id)
 
