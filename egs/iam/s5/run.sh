@@ -150,11 +150,13 @@ if [ $stage -le 12 ]; then
 fi
 
 affix=_1a
+nnet3_affix=
 if [ $stage -le 13 ]; then
   local/chain/run_cnn_1a.sh --stage 0 \
    --gmm tri3 \
    --ali tri3_ali \
    --affix $affix \
+   --nnet3_affix $nnet3_affix \
    --lang_test lang_unk
 fi
 
@@ -163,6 +165,7 @@ if [ $stage -le 14 ]; then
    --gmm tri3 \
    --ali tri3_ali \
    --affix $affix \
+   --nnet3_affix $nnet3_affix \
    --chain_model_dir $exp_dir/chain${nnet3_affix}/cnn${affix} \
    --lang_test lang_unk
 fi
