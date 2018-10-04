@@ -41,6 +41,7 @@ if [[ ! -f $download_dir/lines.tgz && -z $username ]]; then
 fi
 
 lines=data/local/lines
+forms=data/local/forms
 xml=data/local/xml
 ascii=data/local/ascii
 bcorpus=data/local/browncorpus
@@ -48,6 +49,9 @@ lobcorpus=data/local/lobcorpus
 wcorpus=data/local/wellingtoncorpus
 data_split_info=data/local/largeWriterIndependentTextLineRecognitionTask
 lines_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/lines/lines.tgz
+forms_url1=http://www.fki.inf.unibe.ch/DBs/iamDB/data/forms/formsA-D.tgz
+forms_url2=http://www.fki.inf.unibe.ch/DBs/iamDB/data/forms/formsE-H.tgz
+forms_url3=http://www.fki.inf.unibe.ch/DBs/iamDB/data/forms/formsI-Z.tgz
 xml_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/xml/xml.tgz
 data_split_info_url=http://www.fki.inf.unibe.ch/DBs/iamDB/tasks/largeWriterIndependentTextLineRecognitionTask.zip
 ascii_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/ascii/ascii.tgz
@@ -69,6 +73,22 @@ else
   mkdir -p $lines
   tar -xzf $download_dir/lines.tgz -C $lines || exit 1;
   echo "$0: Done downloading and extracting lines images"
+fi
+
+if [ -d $forms ]; then
+  echo "$0: Not downloading page images as it is already there."
+else
+  if [ ! -f $download_dir/formsA-D.tgz ]; then
+    echo "$0: Trying to download page images..."
+    wget -P $download_dir --user "$username" --password "$password" $forms_url1 || exit 1;
+    wget -P $download_dir --user "$username" --password "$password" $forms_url2 || exit 1;
+    wget -P $download_dir --user "$username" --password "$password" $forms_url3 || exit 1;
+  fi
+  mkdir -p $forms
+  tar -xzf $download_dir/formsA-D.tgz -C $forms || exit 1;
+  tar -xzf $download_dir/formsE-H.tgz -C $forms || exit 1;
+  tar -xzf $download_dir/formsI-Z.tgz -C $forms || exit 1;
+  echo "$0: Done downloading and extracting page images"
 fi
 
 if [ -d $xml ]; then
