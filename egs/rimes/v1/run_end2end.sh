@@ -23,18 +23,26 @@ if [ $stage -le 0 ]; then
   local/prepare_data.sh
 fi
 
-mkdir -p data/{train,test,val}/data
+mkdir -p data/{train,test}/data
 if [ $stage -le 1 ]; then
   echo "$(date) stage 1: getting allowed image widths for e2e training..."
   image/get_image2num_frames.py --feat-dim 40 data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
   echo "$(date) Extracting features, creating feats.scp file"
   for set in train test; do
-    local/extract_features.sh --nj $nj --cmd "$cmd" --augment false \
+    local/extract_features.sh --nj $nj --cmd "$cmd" \
     --feat-dim 40 data/${set}
     steps/compute_cmvn_stats.sh data/${set} || exit 1;
   done
   utils/fix_data_dir.sh data/train
+fi
+
+if [ $stage -le 2 ]; then
+  for set in train; do
+    echo "$(date) stage 2: Performing augmentation, it will double training data"
+    local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${set} data/${set}_aug data
+    steps/compute_cmvn_stats.sh data/${set}_aug || exit 1;
+  done
 fi
 
 if [ $stage -le 3 ]; then
@@ -61,7 +69,7 @@ END
   cat data/local/phones.txt data/local/train_data.txt | \
     utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt
-  for set in test train; do
+  for set in test train $train_set; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | \
       utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
