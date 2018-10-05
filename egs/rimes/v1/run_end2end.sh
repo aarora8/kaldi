@@ -5,7 +5,7 @@ set -e
 stage=0
 nj=50
 overwrite=false
-train_set=train
+train_set=train_aug
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
