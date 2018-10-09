@@ -21,4 +21,5 @@ for line in infile:
   transcript = transcript.replace('|', ' ')
   split_transcript = " ".join(re.split("([{}])".format(escaped_punctuations),
                                        transcript)).strip()
-  output.write(uttid + ' ' + split_transcript + '\n')
+  output.write(uttid + ' ' + transcript + '\n')
+  #output.write(uttid + ' ' + split_transcript + '\n')

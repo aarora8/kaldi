@@ -3,20 +3,18 @@
 # e2eali_1d is the same as e2eali_1c but has more CNN layers, different filter size
 # smaller lm-opts, minibatch, frams-per-iter, less epochs and more initial/finaljobs.
 
-# local/chain/compare_wer.sh exp/chain/e2e_cnn_1b/ exp/chain/cnn_e2eali_1d
-# System                      e2e_cnn_1b cnn_e2eali_1d
-# WER                             13.91      8.80
-# WER (rescored)                  13.64      8.52
-# CER                              7.08      4.06
-# CER (rescored)                   6.82      3.98
-# Final train prob               0.0148   -0.0524
-# Final valid prob               0.0105   -0.0713
-# Final train prob (xent)                 -0.4695
-# Final valid prob (xent)                 -0.5310
-# Parameters                      9.52M     4.36M
+# local/chain/compare_wer.sh exp/chain/cnn_e2eali_1b
+# System                      cnn_e2eali_1b
+# WER                              9.77
+# CER                              3.32
+# Final train prob              -0.0699
+# Final valid prob              -0.0954
+# Final train prob (xent)       -0.6080
+# Final valid prob (xent)       -0.7015
+# Parameters                      4.34M
 
-# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1d
-# exp/chain/cnn_e2eali_1d: num-iters=30 nj=3..5 num-params=4.4M dim=40->400 combine=-0.055->-0.055 (over 1) xent:train/valid[19,29,final]=(-0.683,-0.489,-0.469/-0.703,-0.544,-0.531) logprob:train/valid[19,29,final]=(-0.090,-0.057,-0.052/-0.107,-0.076,-0.071)
+# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1b
+# exp/chain/cnn_e2eali_1b: num-iters=25 nj=3..5 num-params=4.3M dim=40->384 combine=-0.071->-0.071 (over 1) xent:train/valid[15,24,final]=(-0.786,-0.740,-0.608/-0.838,-0.822,-0.702) logprob:train/valid[15,24,final]=(-0.106,-0.089,-0.070/-0.120,-0.108,-0.095)
 set -e -o pipefail
 
 stage=0
@@ -25,7 +23,7 @@ nj=50
 train_set=train
 decode_val=true
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1d  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1b_ep8  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 e2echain_model_dir=exp/chain/e2e_cnn_1b
 common_egs_dir=
 reporting_email=
@@ -147,7 +145,6 @@ if [ $stage -le 4 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
-
   conv-relu-batchnorm-dropout-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
   conv-relu-batchnorm-dropout-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
   conv-relu-batchnorm-dropout-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
@@ -198,10 +195,10 @@ if [ $stage -le 5 ]; then
     --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=5 \
+    --trainer.num-epochs=8 \
     --trainer.frames-per-iter=1500000 \
     --trainer.optimization.num-jobs-initial=3 \
-    --trainer.optimization.num-jobs-final=5 \
+    --trainer.optimization.num-jobs-final=8 \
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \

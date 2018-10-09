@@ -2,20 +2,18 @@
 # Copyright    2017  Hossein Hadian
 
 # This script does end2end chain training (i.e. from scratch)
-# ./local/chain/compare_wer.sh exp/chain/e2e_cnn_1b/
+# local/chain/compare_wer.sh exp/chain/e2e_cnn_1b
 # System                      e2e_cnn_1b
-# WER                             13.59
-# WER (rescored)                  13.27
-# CER                              6.92
-# CER (rescored)                   6.71
-# Final train prob               0.0345
-# Final valid prob               0.0269
+# WER                             10.86
+# CER                              5.11
+# Final train prob               0.0809
+# Final valid prob               0.0648
 # Final train prob (xent)
 # Final valid prob (xent)
-# Parameters                      9.52M
+# Parameters                      3.91M
 
 # steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1b
-# exp/chain/e2e_cnn_1b: num-iters=42 nj=2..4 num-params=9.5M dim=40->12640 combine=0.041->0.041 (over 2) logprob:train/valid[27,41,final]=(0.032,0.035,0.035/0.025,0.026,0.027)
+# exp/chain/e2e_cnn_1b: num-iters=21 nj=2..4 num-params=3.9M dim=40->200 combine=0.107->0.107 (over 1) logprob:train/valid[13,20,final]=(0.074,0.075,0.081/0.065,0.053,0.065)
 set -e
 
 # configs for 'chain'
@@ -69,7 +67,7 @@ fi
 if [ $stage -le 1 ]; then
   steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$cmd" \
                                        --shared-phones true \
-                                       --type mono \
+                                       --type biphone \
                                        data/$train_set $lang $treedir
   $cmd $treedir/log/make_phone_lm.log \
   cat data/$train_set/text \| \

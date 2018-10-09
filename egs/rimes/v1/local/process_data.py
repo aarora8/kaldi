@@ -19,38 +19,29 @@ parser.add_argument('database_path', type=str,
                     help='Path to the downloaded (and extracted) mdacat data')
 parser.add_argument('dataset', type=str,
                     help='Subset of data to process.')
+parser.add_argument("--augment", type=lambda x: (str(x).lower()=='true'), default=False,
+                   help="performs image augmentation")
+parser.add_argument('--pixel-scaling', type=int, default=30,
+                    help='padding across horizontal/verticle direction')
 args = parser.parse_args()
 
-def dilate_polygon(points, amount_increase):
-    """ Increases size of polygon given as a list of tuples.
-        Assumes points in polygon are given in CCW
+def expand_aabb(left, right, top, bottom, delta_pixel):
+    """ Increases size of axis aligned bounding box (aabb).
     """
-    expanded_points = []
-    for index, point in enumerate(points):
-        prev_point = points[(index - 1) % len(points)]
-        next_point = points[(index + 1) % len(points)]
-        prev_edge = np.subtract(point, prev_point)
-        next_edge = np.subtract(next_point, point)
-
-        prev_normal = ((1 * prev_edge[1]), (-1 * prev_edge[0]))
-        prev_normal = np.divide(prev_normal, np.linalg.norm(prev_normal))
-        next_normal = ((1 * next_edge[1]), (-1 * next_edge[0]))
-        next_normal = np.divide(next_normal, np.linalg.norm(next_normal))
-
-        bisect = np.add(prev_normal, next_normal)
-        bisect = np.divide(bisect, np.linalg.norm(bisect))
-
-        cos_theta = np.dot(next_normal, bisect)
-        hyp = amount_increase / cos_theta
-
-        new_point = np.around(point + hyp * bisect)
-        new_point = new_point.astype(int)
-        new_point = new_point.tolist()
-        new_point = tuple(new_point)
-        expanded_points.append(new_point)
-    return expanded_points
+    left = left - delta_pixel
+    right = right + delta_pixel
+    top = top - delta_pixel
+    bottom = bottom + delta_pixel
+    return left, right, top, bottom
 
 def get_line_images_from_page_image(file_name, left, right, top, bottom, line_id):
+    """ Given a page image, extracts the line images from it.
+    Input
+    -----
+    file_name (string): name of the page image.
+    left, right, top, bottom (int): coordinates corresponding to the line image.
+    line_id (int): line number on the page image.
+    """
     image_path = os.path.join(data_path, file_name)
     im = Image.open(image_path)
     box = (left, top, right, bottom)
@@ -62,11 +53,21 @@ def get_line_images_from_page_image(file_name, left, right, top, bottom, line_id
     imgray.save(image_path)
     return base_name, image_path
 
-def write_kaldi_process_data_files(image_path, base_name, line_id, text):
+def write_kaldi_process_data_files(base_name, line_id, text):
+    """creates files requires for dictionary and feats.scp.
+    Input
+    -----
+    image_path (string): name of the page image.
+    line_id (str): line number on the page image.
+    text: transcription of the line image.
+    base_name (string): 
+    """
     writer_id = str(base_name.split('-')[1])
     writer_id = str(writer_id).zfill(6)
     writer_id = 'writer' + writer_id
     utt_id = writer_id + '_' + base_name + '_' +  str(line_id).zfill(6)
+    line_image_file_name = base_name + '_' +  str(line_id).zfill(6) + '.png'
+    image_path = os.path.join(data_path, 'lines', line_image_file_name)
     text_fh.write(utt_id + ' ' + text + '\n')
     utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
     image_fh.write(utt_id + ' ' + image_path + '\n')
@@ -96,5 +97,15 @@ for page in single_page:
         text = node.getAttribute('Value')
         text_vect = text.split() # this is to avoid non-utf-8 spaces
         text = " ".join(text_vect)
-        base_name, image_path = get_line_images_from_page_image(file_name, left, right, top, bottom, line_id)
-        write_kaldi_process_data_files(image_path, base_name, line_id, text)
+        #base_name, image_path = get_line_images_from_page_image(file_name, left, right, top, bottom, line_id)
+        #write_kaldi_process_data_files(image_path, base_name, line_id, text)
+        if args.augment:
+            for i in range(0, 3):
+                additional_pixel = random.randint(1, args.pixel_scaling)
+                left, right, top, bottom = expand_aabb(left, right, top, bottom, (i-1)*args.pixel_scaling + additional_pixel + 1)
+                base_name, image_path = get_line_images_from_page_image(file_name, left, right, top, bottom, line_id)
+                line_id = line_id + '_scale' + str(i)
+                write_kaldi_process_data_files(image_path, base_name, line_id, text)
+        else:
+            base_name, image_path = get_line_images_from_page_image(file_name, left, right, top, bottom, line_id)
+            write_kaldi_process_data_files(image_path, base_name, line_id, text)
