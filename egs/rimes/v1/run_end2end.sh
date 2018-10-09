@@ -5,12 +5,21 @@ set -e
 stage=0
 nj=50
 overwrite=false
+aug=false
 train_set=train
+bpe_dir=
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
 . ./utils/parse_options.sh  # e.g. this parses the above options
                             # if supplied.
+if $aug; then
+  train_set=train_aug
+  bpe_dir=train_aug
+else
+  train_set=train
+fi
+
 if [ $stage -le 0 ]; then
   if [ -f data/train/text ] && ! $overwrite; then
     echo "$0: Not processing, probably script have run from wrong stage"
@@ -36,7 +45,7 @@ if [ $stage -le 1 ]; then
   utils/fix_data_dir.sh data/train
 fi
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 2 ] && $aug; then
   echo "$(date) stage 2: Performing augmentation, it will double training data"
   local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/train data/$train_set data
   steps/compute_cmvn_stats.sh data/$train_set || exit 1;
@@ -66,7 +75,8 @@ END
   cat data/local/phones.txt data/local/train_data.txt | \
     utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt
-  for set in test train $train_set; do
+  
+  for set in test train $bpe_dir; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | \
       utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
