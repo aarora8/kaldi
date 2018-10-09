@@ -5,14 +5,13 @@ set -e
 stage=0
 nj=50
 overwrite=false
-train_set=train_aug
+train_set=train
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
 . ./utils/parse_options.sh  # e.g. this parses the above options
                             # if supplied.
 if [ $stage -le 0 ]; then
-
   if [ -f data/train/text ] && ! $overwrite; then
     echo "$0: Not processing, probably script have run from wrong stage"
     echo "Exiting with status 1 to avoid data corruption"
