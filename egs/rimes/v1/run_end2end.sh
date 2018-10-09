@@ -88,7 +88,7 @@ if [ $stage -le 5 ]; then
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.0 --position-dependent-phones false \
                         data/local/dict "<sil>" data/lang/temp data/lang
   utils/lang/bpe/add_final_optional_silence.sh --final-sil-prob 0.5 data/lang
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
                      data/local/dict/lexicon.txt data/lang
 fi
 

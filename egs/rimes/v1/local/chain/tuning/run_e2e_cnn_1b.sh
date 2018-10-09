@@ -23,7 +23,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 affix=1b
-nj=30
+nj=50
 
 # training options
 tdnn_dim=450
@@ -69,7 +69,7 @@ fi
 if [ $stage -le 1 ]; then
   steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$cmd" \
                                        --shared-phones true \
-                                       --type biphone \
+                                       --type mono \
                                        data/$train_set $lang $treedir
   $cmd $treedir/log/make_phone_lm.log \
   cat data/$train_set/text \| \
@@ -120,7 +120,7 @@ if [ $stage -le 3 ]; then
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 4 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 1000000 \
+    --trainer.frames-per-iter 2000000 \
     --trainer.num-epochs 4 \
     --trainer.optimization.momentum 0 \
     --trainer.optimization.num-jobs-initial 2 \

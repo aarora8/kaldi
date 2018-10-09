@@ -14,7 +14,7 @@
 set -e
 stage=0
 dir=data/local/local_lm
-order=3
+order=6
 echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh || exit 1;
 
@@ -65,6 +65,9 @@ if [ $stage -le 0 ]; then
   # we can later fold the dev data into this.
   #cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/train.txt
   tail -n +2000 data/train/text | cut -d " " -f 2- >  ${dir}/data/text/train.txt
+  #cat file1 | \
+  #  utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
+  #  | sed 's/@@//g' > ${dir}/data/text/corpus_text.txt
 
   # for reporting perplexities, we'll use the "real" dev set.
   # (the validation data is used as ${dir}/data/text/dev.txt to work
@@ -74,7 +77,7 @@ if [ $stage -le 0 ]; then
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
   # get the wordlist from MADCAT text
-  cat ${dir}/data/text/train.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  cat ${dir}/data/text/{train,corpus_text}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 

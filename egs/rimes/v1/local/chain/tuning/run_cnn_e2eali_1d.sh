@@ -21,7 +21,7 @@ set -e -o pipefail
 
 stage=0
 
-nj=30
+nj=50
 train_set=train
 decode_val=true
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
