@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
 
+""" This script reads xml file and creates the following files :text, utt2spk, images.scp.
+    It also creates line images from page image and stores it into
+    data/local/rimes_data/train/lines.
+  Eg. local/process_data.py data/local/rimes_data/train train
+  Eg. text file: writer000000_train2011-0_000001 Je vous adresse ce courrier afin
+      utt2spk file: writer000000_train2011-0_000001 writer000000
+      images.scp file: writer000000_train2011-0_000001 \
+      data/local/rimes_data/train/lines/train2011-0_000001.png
+"""
+
 import argparse
 import xml.dom.minidom as minidom
 from PIL import Image
@@ -52,6 +62,6 @@ for page in single_page:
         right = int(node.getAttribute('Right'))
         top = int(node.getAttribute('Top'))
         text = node.getAttribute('Value')
-        text_vect = text.split()
+        text_vect = text.split() # this is to avoid non-utf-8 spaces
         text = " ".join(text_vect)
         get_line_images_from_page_image(file_name, left, right, top, bottom, line_id, text)

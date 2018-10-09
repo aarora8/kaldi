@@ -83,6 +83,7 @@ END
       | sed 's/@@//g' > data/$set/bpe_text
     mv data/$set/text data/$set/text.old
     paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
+    rm -f data/$set/bpe_text data/$set/ids
   done
 fi
 
