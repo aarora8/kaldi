@@ -3,15 +3,14 @@
 # e2eali_1d is the same as e2eali_1c but has more CNN layers, different filter size
 # smaller lm-opts, minibatch, frams-per-iter, less epochs and more initial/finaljobs.
 
-# local/chain/compare_wer.sh exp/chain/cnn_e2eali_1b
-# System                      cnn_e2eali_1b
-# WER                              9.77
-# CER                              3.32
-# Final train prob              -0.0699
-# Final valid prob              -0.0954
-# Final train prob (xent)       -0.6080
-# Final valid prob (xent)       -0.7015
-# Parameters                      4.34M
+# local/chain/compare_wer.sh exp/chain/cnn_e2eali_1b_ep102
+# System                      cnn_e2eali_1b_ep102
+# WER                              9.13
+# CER                              3.11
+# Final valid prob              -0.0967
+# Final train prob (xent)       -0.5078
+# Final valid prob (xent)       -0.6312
+# Parameters                      4.35M
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1b
 # exp/chain/cnn_e2eali_1b: num-iters=25 nj=3..5 num-params=4.3M dim=40->384 combine=-0.071->-0.071 (over 1) xent:train/valid[15,24,final]=(-0.786,-0.740,-0.608/-0.838,-0.822,-0.702) logprob:train/valid[15,24,final]=(-0.106,-0.089,-0.070/-0.120,-0.108,-0.095)
@@ -23,7 +22,7 @@ nj=50
 train_set=train
 decode_val=true
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1b_ep10  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1b_ep103  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 e2echain_model_dir=exp/chain/e2e_cnn_1b
 common_egs_dir=
 reporting_email=
@@ -36,8 +35,6 @@ frame_subsampling_factor=4
 chunk_width=340,300,200,100
 num_leaves=500
 # we don't need extra left/right context for TDNN systems.
-chunk_left_context=0
-chunk_right_context=0
 tdnn_dim=550
 # training options
 srand=0
@@ -186,16 +183,13 @@ if [ $stage -le 5 ]; then
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
-    --chain.l2-regularize=0.00005 \
     --chain.apply-deriv-weights=true \
     --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
     --chain.frame-subsampling-factor=$frame_subsampling_factor \
     --chain.alignment-subsampling-factor=1 \
-    --chain.left-tolerance 3 \
-    --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=12 \
+    --trainer.num-epochs=10 \
     --trainer.frames-per-iter=2000000 \
     --trainer.optimization.num-jobs-initial=3 \
     --trainer.optimization.num-jobs-final=8 \
@@ -204,12 +198,10 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
     --trainer.num-chunk-per-minibatch=32,16 \
+    --chain.right-tolerance 3 \
+    --chain.right-tolerance 3 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
-    --egs.chunk-left-context=$chunk_left_context \
-    --egs.chunk-right-context=$chunk_right_context \
-    --egs.chunk-left-context-initial=0 \
-    --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
     --cleanup.remove-egs=$remove_egs \
@@ -238,10 +230,6 @@ if [ $stage -le 7 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for decode_set in test; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-      --extra-left-context $chunk_left_context \
-      --extra-right-context $chunk_right_context \
-      --extra-left-context-initial 0 \
-      --extra-right-context-final 0 \
       --frames-per-chunk $frames_per_chunk \
       --nj $nj --cmd "$cmd" \
       $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
