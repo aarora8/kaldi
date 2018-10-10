@@ -23,7 +23,7 @@ nj=50
 train_set=train
 decode_val=true
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1b_ep8  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1b_ep10  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 e2echain_model_dir=exp/chain/e2e_cnn_1b
 common_egs_dir=
 reporting_email=
@@ -195,8 +195,8 @@ if [ $stage -le 5 ]; then
     --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=8 \
-    --trainer.frames-per-iter=1500000 \
+    --trainer.num-epochs=12 \
+    --trainer.frames-per-iter=2000000 \
     --trainer.optimization.num-jobs-initial=3 \
     --trainer.optimization.num-jobs-final=8 \
     --trainer.dropout-schedule $dropout_schedule \
