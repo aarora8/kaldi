@@ -195,7 +195,7 @@ if [ $stage -le 5 ]; then
     --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=8 \
+    --trainer.num-epochs=5 \
     --trainer.frames-per-iter=1500000 \
     --trainer.optimization.num-jobs-initial=3 \
     --trainer.optimization.num-jobs-final=8 \

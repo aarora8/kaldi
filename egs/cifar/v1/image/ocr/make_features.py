@@ -88,9 +88,9 @@ def horizontal_pad(im, allowed_lengths = None):
         left_padding = int(padding // 2)
         right_padding = padding - left_padding
     dim_y = im.shape[0] # height
-    im_pad = np.concatenate((255 * np.ones((dim_y, left_padding, args.num_channels),
+    im_pad = np.concatenate((255 * np.ones((dim_y, left_padding),
                                            dtype=int), im), axis=1)
-    im_pad1 = np.concatenate((im_pad, 255 * np.ones((dim_y, right_padding, args.num_channels),
+    im_pad1 = np.concatenate((im_pad, 255 * np.ones((dim_y, right_padding),
                                                     dtype=int)), axis=1)
     return im_pad1
 
@@ -184,13 +184,7 @@ with open(data_list_path) as f:
             im = vertical_shift(im, 'normal')
         elif args.augment_type == 'random_shift':
             im = vertical_shift(im, 'notmid')
-        if args.num_channels == 1:
-            data = np.transpose(im, (1, 0))
-        elif args.num_channels == 3:
-            H = im.shape[0]
-            W = im.shape[1]
-            C = im.shape[2]
-            data = np.reshape(np.transpose(im, (1, 0, 2)), (W, H * C))
+        data = np.transpose(im, (1, 0))
         data = np.divide(data, 255.0)
         num_ok += 1
         write_kaldi_matrix(out_fh, data, image_id)
