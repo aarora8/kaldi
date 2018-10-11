@@ -23,7 +23,7 @@ nj=50
 train_set=train
 decode_val=true
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1b_ep12  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 e2echain_model_dir=exp/chain/e2e_cnn_1b
 common_egs_dir=
 reporting_email=
@@ -31,13 +31,10 @@ reporting_email=
 # chain options
 train_stage=-10
 xent_regularize=0.1
-frame_subsampling_factor=4
 # training chunk-options
 chunk_width=340,300,200,100
 num_leaves=500
 # we don't need extra left/right context for TDNN systems.
-chunk_left_context=0
-chunk_right_context=0
 tdnn_dim=550
 # training options
 srand=0
@@ -122,7 +119,7 @@ if [ $stage -le 3 ]; then
   fi
 
   steps/nnet3/chain/build_tree.sh \
-    --frame-subsampling-factor $frame_subsampling_factor \
+    --frame-subsampling-factor 4 \
     --alignment-subsampling-factor 1 \
     --context-opts "--context-width=2 --central-position=1" \
     --cmd "$cmd" $num_leaves ${train_data_dir} \
@@ -186,16 +183,15 @@ if [ $stage -le 5 ]; then
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
-    --chain.l2-regularize=0.00005 \
     --chain.apply-deriv-weights=true \
     --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
-    --chain.frame-subsampling-factor=$frame_subsampling_factor \
+    --chain.frame-subsampling-factor=4 \
     --chain.alignment-subsampling-factor=1 \
     --chain.left-tolerance 3 \
     --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=12 \
+    --trainer.num-epochs=10 \
     --trainer.frames-per-iter=2000000 \
     --trainer.optimization.num-jobs-initial=3 \
     --trainer.optimization.num-jobs-final=8 \
@@ -206,10 +202,6 @@ if [ $stage -le 5 ]; then
     --trainer.num-chunk-per-minibatch=32,16 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
-    --egs.chunk-left-context=$chunk_left_context \
-    --egs.chunk-right-context=$chunk_right_context \
-    --egs.chunk-left-context-initial=0 \
-    --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
     --cleanup.remove-egs=$remove_egs \
@@ -238,10 +230,6 @@ if [ $stage -le 7 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for decode_set in test; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-      --extra-left-context $chunk_left_context \
-      --extra-right-context $chunk_right_context \
-      --extra-left-context-initial 0 \
-      --extra-right-context-final 0 \
       --frames-per-chunk $frames_per_chunk \
       --nj $nj --cmd "$cmd" \
       $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
