@@ -101,12 +101,13 @@ for page in single_page:
         #base_name, image_path = get_line_images_from_page_image(file_name, left, right, top, bottom, line_id)
         #write_kaldi_process_data_files(base_name, line_id, text)
         if args.augment:
-            for i in range(0, 3):
-                additional_pixel = random.randint(1, args.pixel_scaling)
-                left, right, top, bottom = expand_aabb(left, right, top, bottom, (i-1)*args.pixel_scaling + additional_pixel + 1)
-                line_id = str(id) + '_scale' + str(i)
-                base_name, image_path = get_line_images_from_page_image(file_name, left, right, top, bottom, line_id)
-                write_kaldi_process_data_files(base_name, line_id, text)
+            base_name, image_path = get_line_images_from_page_image(file_name, left, right, top, bottom, str(id))
+            write_kaldi_process_data_files(base_name, str(id), text)
+            additional_pixel = random.randint(1, args.pixel_scaling)
+            left, right, top, bottom = expand_aabb(left, right, top, bottom, args.pixel_scaling + additional_pixel + 1)
+            line_id = str(id) + '_scale' + str(2)
+            base_name, image_path = get_line_images_from_page_image(file_name, left, right, top, bottom, line_id)
+            write_kaldi_process_data_files(base_name, line_id, text)
         else:
             base_name, image_path = get_line_images_from_page_image(file_name, left, right, top, bottom, str(id))
             write_kaldi_process_data_files(base_name, str(id), text)

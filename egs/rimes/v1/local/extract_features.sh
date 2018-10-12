@@ -9,7 +9,7 @@
 nj=4
 cmd=run.pl
 feat_dim=40
-augment_type=true
+augment_type=false
 fliplr=false
 echo "$0 $@"
 
