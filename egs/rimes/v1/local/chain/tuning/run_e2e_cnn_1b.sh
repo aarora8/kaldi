@@ -26,7 +26,7 @@ tdnn_dim=450
 minibatch_size=150=100,64/300=50,32/600=25,16/1200=16,8
 common_egs_dir=
 train_set=train
-decode_val=true
+decode_val=false
 lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
 if $decode_val; then maybe_val=val; else maybe_val= ; fi
@@ -108,7 +108,6 @@ if [ $stage -le 3 ]; then
     --cmd "$cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
@@ -117,10 +116,10 @@ if [ $stage -le 3 ]; then
     --chain.alignment-subsampling-factor 4 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter 2000000 \
-    --trainer.num-epochs 4 \
+    --trainer.num-epochs 2 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial 2 \
-    --trainer.optimization.num-jobs-final 4 \
+    --trainer.optimization.num-jobs-initial 3 \
+    --trainer.optimization.num-jobs-final 5 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
