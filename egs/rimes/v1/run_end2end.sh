@@ -111,7 +111,7 @@ if [ $stage -le 7 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/$train_set data/lang exp/chain/e2e_cnn_1b exp/chain/e2e_ali_train
+                       data/$train_set data/lang exp/chain/e2e_cnn_1d exp/chain/e2e_ali_train
 fi
 
 if [ $stage -le 8 ]; then
