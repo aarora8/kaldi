@@ -23,9 +23,9 @@ train_set=train
 decode_val=true
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=_1d  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-e2echain_model_dir=exp/chain/e2e_cnn_1b
+e2echain_model_dir=exp/chain/e2e_cnn_1d
 tree_affix=_1d
-bnf_chain_model_dir=exp/chain/e2e_cnn_1c
+bnf_chain_model_dir=exp/chain/e2e_cnn_1d
 bnf_layer_name=tdnn6.affine
 common_egs_dir=
 reporting_email=
@@ -66,7 +66,6 @@ ali_dir=exp/chain/e2e_ali_train
 lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats
 dir=exp/chain${nnet3_affix}/cnn_e2eali${affix}
 train_data_dir=data/${train_set}
-#tree_dir=exp/chain${nnet3_affix}/tree_e2e
 tree_dir=exp/chain${nnet3_affix}/tree_e2e${tree_affix}
 
 # the 'lang' directory is created by this script.
@@ -112,7 +111,6 @@ if [ $stage -le 2 ]; then
 fi
 
 bnf_data_dir=$bnf_chain_model_dir/$(basename $train_data_dir)
-
 if [ $stage -le 3 ]; then
   if [ -f $bnf_data_dir/feats.scp ]; then
     echo "$0: $bnf_data_dir/feats.scp exists. Refusing to dump features!"

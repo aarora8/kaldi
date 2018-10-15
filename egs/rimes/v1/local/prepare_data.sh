@@ -29,7 +29,7 @@ fi
 
 if [ $stage -le 0 ]; then
   echo "$0: Processing train and test data... $(date)."
-  local/process_data.py $data/train train || exit 1
+  local/process_data.py $data/train train --augment true || exit 1
   local/process_data.py $data/test  test || exit 1
   for dataset in test train; do
     echo "$0: Fixing data directory for dataset: $dataset $(date)."

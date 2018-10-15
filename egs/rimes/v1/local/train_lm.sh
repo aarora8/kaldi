@@ -65,7 +65,7 @@ if [ $stage -le 0 ]; then
   # we can later fold the dev data into this.
   #cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/train.txt
   tail -n +2000 data/train/text | cut -d " " -f 2- >  ${dir}/data/text/train.txt
-  cat /home/aaror/file1 | \
+  cat /home/aaror/afp_fre_199406 | \
     utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
     | sed 's/@@//g' > ${dir}/data/text/corpus_text.txt
 

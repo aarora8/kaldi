@@ -5,11 +5,21 @@ set -e
 stage=0
 nj=50
 overwrite=false
+aug=false
+train_set=train
+bpe_dir=
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
 . ./utils/parse_options.sh  # e.g. this parses the above options
                             # if supplied.
+if $aug; then
+  train_set=train_aug
+  bpe_dir=train_aug
+else
+  train_set=train
+fi
+
 if [ $stage -le 0 ]; then
   if [ -f data/train/text ] && ! $overwrite; then
     echo "$0: Not processing, probably script have run from wrong stage"
@@ -33,6 +43,12 @@ if [ $stage -le 1 ]; then
     steps/compute_cmvn_stats.sh data/${set} || exit 1;
   done
   utils/fix_data_dir.sh data/train
+fi
+
+if [ $stage -le 2 ] && $aug; then
+  echo "$(date) stage 2: Performing augmentation, it will double training data"
+  local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/train data/$train_set data
+  steps/compute_cmvn_stats.sh data/$train_set || exit 1;
 fi
 
 if [ $stage -le 3 ]; then
@@ -60,7 +76,7 @@ END
     utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt
   
-  for set in test train; do
+  for set in test train $bpe_dir; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | \
       utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
@@ -72,33 +88,33 @@ END
 fi
 
 if [ $stage -le 4 ]; then
-  echo "$0: Estimating a language model for decoding..."
-  local/train_lm.sh
-fi
-
-if [ $stage -le 5 ]; then
   echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.0 --position-dependent-phones false \
                         data/local/dict "<sil>" data/lang/temp data/lang
   utils/lang/bpe/add_final_optional_silence.sh --final-sil-prob 0.5 data/lang
+fi
+
+if [ $stage -le 5 ]; then
+  echo "$0: Estimating a language model for decoding..."
+  local/train_lm.sh
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
                      data/local/dict/lexicon.txt data/lang
 fi
 
 if [ $stage -le 6 ]; then
   echo "$0: Calling the flat-start chain recipe..."
-  local/chain/run_e2e_cnn.sh
+  local/chain/run_e2e_cnn.sh --train_set $train_set
 fi
 
 if [ $stage -le 7 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/train data/lang exp/chain/e2e_cnn_1b exp/chain/e2e_ali_train
+                       data/$train_set data/lang exp/chain/e2e_cnn_1d exp/chain/e2e_ali_train
 fi
 
 if [ $stage -le 8 ]; then
   echo "$0: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_e2eali.sh
+  local/chain/run_cnn_e2eali.sh --train_set $train_set
 fi

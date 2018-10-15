@@ -2,23 +2,25 @@
 # Copyright    2017  Hossein Hadian
 
 # This script does end2end chain training (i.e. from scratch)
-# local/chain/compare_wer.sh exp/chain/e2e_cnn_1b/
-# System                      e2e_cnn_1b
-# WER                             12.45
-# CER                              5.09
-# Final train prob               0.1248
-# Final valid prob               0.0813
-# Parameters                     12.93M
+# local/chain/compare_wer.sh exp/chain/e2e_cnn_1d
+# System                      e2e_cnn_1d
+# WER                              9.59
+# CER                              3.70
+# Final train prob               0.0383
+# Final valid prob               0.0377
+# Final train prob (xent)
+# Final valid prob (xent)
+# Parameters                     13.09M
 
-# steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1b
-# exp/chain/e2e_cnn_1b: num-iters=21 nj=2..4 num-params=3.9M dim=40->200 combine=0.107->0.107 (over 1) logprob:train/valid[13,20,final]=(0.074,0.075,0.081/0.065,0.053,0.065)
+# steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1d
+# exp/chain/e2e_cnn_1d: num-iters=24 nj=2..4 num-params=13.1M dim=40->20200 combine=0.021->0.021 (over 1) logprob:train/valid[15,23,final]=(0.033,0.036,0.038/0.036,0.034,0.038)
 set -e
 
 # configs for 'chain'
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1b
+affix=1d
 nj=50
 
 # training options
@@ -26,7 +28,7 @@ tdnn_dim=450
 minibatch_size=150=100,64/300=50,32/600=25,16/1200=16,8
 common_egs_dir=
 train_set=train
-decode_val=false
+decode_val=true
 lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
 if $decode_val; then maybe_val=val; else maybe_val= ; fi
@@ -92,6 +94,7 @@ if [ $stage -le 2 ]; then
   relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim
   relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim
   relu-batchnorm-layer name=tdnn4 input=Append(-4,0,4) dim=$tdnn_dim
+  relu-batchnorm-layer name=tdnn6 input=Append(-4,0,4) dim=200
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $output_opts
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
@@ -108,6 +111,7 @@ if [ $stage -le 3 ]; then
     --cmd "$cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.leaky-hmm-coefficient 0.1 \
+    --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
@@ -116,10 +120,10 @@ if [ $stage -le 3 ]; then
     --chain.alignment-subsampling-factor 4 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter 2000000 \
-    --trainer.num-epochs 2 \
+    --trainer.num-epochs 3 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial 3 \
-    --trainer.optimization.num-jobs-final 5 \
+    --trainer.optimization.num-jobs-initial 2 \
+    --trainer.optimization.num-jobs-final 4 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
