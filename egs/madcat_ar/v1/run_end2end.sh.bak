@@ -127,9 +127,23 @@ if [ $stage -le 6 ]; then
   local/chain/run_e2e_cnn.sh --train-set train_sup10k --nj 30
 fi
 
+chunk_width='340,300,200,100'
 lang_decode=data/lang
 decode_e2e=true
+
 if [ $stage -le 7 ]; then
+  echo "$(date) stage 4: Aligning the training data using the e2e chain model..."
+  steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
+    --scale-opts '--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0' \
+    data/train_sup10k data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
+fi
+
+if [ $stage -le 8 ]; then
+  echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
+  local/chain/run_cnn_e2eali.sh --chunk_width $chunk_width --train-set train_sup10k --nj 30
+fi
+
+if [ $stage -le 9 ]; then
   echo "$0: Estimating a language model for decoding..."
   mkdir -p data/local/pocolm_ex250k
   utils/filter_scp.pl --exclude data/train_unsup10k_100k/utt2spk \
@@ -140,7 +154,7 @@ if [ $stage -le 7 ]; then
                      data/local/dict/lexicon.txt $lang_decode
 fi
 
-if [ $stage -le 8 ] && $decode_e2e; then
+if [ $stage -le 10 ] && $decode_e2e; then
   echo "$0: $(date) stage 10: decoding end2end setup..."
   utils/mkgraph.sh --self-loop-scale 1.0 $lang_decode \
     exp/chain/e2e_cnn_1a/ exp/chain/e2e_cnn_1a/graph || exit 1;
@@ -152,35 +166,39 @@ if [ $stage -le 8 ] && $decode_e2e; then
   local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/
 fi
 
-lat_dir=exp/chain/e2e_train_sup10k_lats
-if [ $stage -le 9 ]; then
-  # Get the alignments as lattices (gives the chain training more freedom).
-  # use the same num-jobs as the alignments
-  steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" \
-                            --acoustic-scale 1.0 \
-                            --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
-                            data/train_sup10k data/lang exp/chain/e2e_cnn_1a2 $lat_dir
-  echo "" >$lat_dir/splice_opts
-fi
+if [ $stage -le 11 ]; then
+  echo "$(date) stage 11: decoding chain alignment setup..."
+  utils/mkgraph.sh \
+    --self-loop-scale 1.0 $lang_decode \
+    exp/chain/cnn_e2eali_1b.3a/ exp/chain/cnn_e2eali_1b.3a/graph || exit 1;
 
-if [ $stage -le 10 ]; then
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+    --nj 30 --cmd "$cmd" --beam 12 \
+    exp/chain/cnn_e2eali_1b.3a/graph data/test_2k2 exp/chain/cnn_e2eali_1b.3a/decode_test || exit 1;
+
+  echo "Done. Date: $(date). Results:"
+  local/chain/compare_wer.sh exp/chain/cnn_e2eali_1b.3a
+fi
+exit
+if [ $stage -le 12 ]; then
   local/semisup/chain/run_cnn_chainali_semisupervised_1b.sh \
-    --supervised-set train_sup10k \
-    --unsupervised-set train_unsup10k_100k \
-    --sup-chain-dir exp/chain/cnn_e2eali_1b \
-    --sup-lat-dir $lat_dir \
+    --supervised-set train \
+    --unsupervised-set train_unsup \
+    --sup-chain-dir exp/chain/cnn_e2eali_1a \
+    --sup-lat-dir exp/chain/e2e_train_lats \
     --sup-tree-dir exp/chain/tree_e2e \
-    --tdnn-affix _semisup3 \
-    --stage 10 \
-    --exp-root exp/semisup_56k || exit 1
+    --chain-affix "" \
+    --tdnn-affix _semisup \
+    --exp-root $exp_root || exit 1
 fi
 
-#if [ $stage -le 11 ]; then
-#  local/semisup/chain/run_tdnn.sh \
-#    --train-set semisup50k_100k_250k \
-#    --nnet3-affix _semi50k_100k_250k \
-#    --chain-affix _semi50k_100k_250k \
-#    --common-treedir $exp_root/chain_semi50k_100k_250k/tree_bi_a \
-#    --tdnn-affix 1a_oracle --nj 100 \
-#    --gmm tri4a --exp-root $exp_root \
-#    --stage 9 || exit 1
+if [ $stage -le 11 ]; then
+  local/semisup/chain/run_tdnn.sh \
+    --train-set semisup50k_100k_250k \
+    --nnet3-affix _semi50k_100k_250k \
+    --chain-affix _semi50k_100k_250k \
+    --common-treedir $exp_root/chain_semi50k_100k_250k/tree_bi_a \
+    --tdnn-affix 1a_oracle --nj 100 \
+    --gmm tri4a --exp-root $exp_root \
+    --stage 9 || exit 1

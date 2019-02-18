@@ -22,8 +22,8 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1a
-
+affix=1a2
+nj=30
 # training options
 tdnn_dim=450
 minibatch_size=150=128,64/300=128,64/600=64,32/1200=32,16
@@ -63,7 +63,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$cmd" \
+  steps/nnet3/chain/e2e/prepare_e2e.sh --nj $nj --cmd "$cmd" \
                                        --shared-phones true \
                                        --type mono \
                                        data/$train_set $lang $treedir
@@ -117,11 +117,11 @@ if [ $stage -le 3 ]; then
     --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 2000000 \
-    --trainer.num-epochs 2 \
+    --trainer.frames-per-iter 1000000 \
+    --trainer.num-epochs 6 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial 6 \
-    --trainer.optimization.num-jobs-final 16 \
+    --trainer.optimization.num-jobs-initial 5 \
+    --trainer.optimization.num-jobs-final 8 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
