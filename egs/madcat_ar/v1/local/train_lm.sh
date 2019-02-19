@@ -62,7 +62,7 @@ if [ $stage -le 0 ]; then
 
   # use the training data as an additional data source.
   # we can later fold the dev data into this.
-  cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/train.txt
+  cat data/local/pocolm_ex250k/text.tmp | cut -d " " -f 2- >  ${dir}/data/text/train.txt
 
   # for reporting perplexities, we'll use the "real" dev set.
   # (the validation data is used as ${dir}/data/text/dev.txt to work
@@ -99,26 +99,4 @@ if [ $stage -le 1 ]; then
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
   mkdir -p ${dir}/data/arpa
   format_arpa_lm.py ${unpruned_lm_dir} | gzip -c > ${dir}/data/arpa/${order}gram_unpruned.arpa.gz
-fi
-
-if [ $stage -le 2 ]; then
-  echo "$0: pruning the LM (to larger size)"
-  # Using 1 million n-grams for a big LM for rescoring purposes.
-  size=1000000
-  prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
-
-  get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
-  mkdir -p ${dir}/data/arpa
-  format_arpa_lm.py ${dir}/data/lm_${order}_prune_big | gzip -c > ${dir}/data/arpa/${order}gram_big.arpa.gz
-fi
-
-if [ $stage -le 3 ]; then
-  echo "$0: pruning the LM (to smaller size)"
-  # Using 500k n-grams for a smaller LM for graph building.  Prune from the
-  # bigger-pruned LM, it'll be faster.
-  size=500000
-  prune_lm_dir.py --target-num-ngrams=$size ${dir}/data/lm_${order}_prune_big ${dir}/data/lm_${order}_prune_small
-
-  get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_small 2>&1 | grep -F '[perplexity'
-  format_arpa_lm.py ${dir}/data/lm_${order}_prune_small | gzip -c > ${dir}/data/arpa/${order}gram_small.arpa.gz
 fi

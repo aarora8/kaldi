@@ -23,7 +23,7 @@ stage=0
 nj=70
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1b.ep4  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 e2echain_model_dir=exp/chain/e2e_cnn_1a
 common_egs_dir=
 reporting_email=
@@ -189,9 +189,9 @@ if [ $stage -le 5 ]; then
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=4 \
-    --trainer.frames-per-iter=2000000 \
-    --trainer.optimization.num-jobs-initial=3 \
-    --trainer.optimization.num-jobs-final=16 \
+    --trainer.frames-per-iter=1000000 \
+    --trainer.optimization.num-jobs-initial=5 \
+    --trainer.optimization.num-jobs-final=8 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
@@ -223,16 +223,16 @@ if [ $stage -le 6 ]; then
     $dir $dir/graph || exit 1;
 fi
 
-if [ $stage -le 7 ]; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --frames-per-chunk $frames_per_chunk \
-    --nj $nj --cmd "$cmd" \
-    $dir/graph data/test $dir/decode_test || exit 1;
-
-  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
-                                data/test $dir/decode_test{,_rescored} || exit 1
-fi
-
-echo "Done. Date: $(date). Results:"
-local/chain/compare_wer.sh $dir
+#if [ $stage -le 7 ]; then
+#  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+#  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+#    --frames-per-chunk $frames_per_chunk \
+#    --nj $nj --cmd "$cmd" \
+#    $dir/graph data/test $dir/decode_test || exit 1;
+#
+#  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+#                                data/test $dir/decode_test{,_rescored} || exit 1
+#fi
+#
+#echo "Done. Date: $(date). Results:"
+#local/chain/compare_wer.sh $dir
