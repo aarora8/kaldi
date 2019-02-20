@@ -102,7 +102,16 @@ if [ $stage -le 3 ]; then
   utils/lang/bpe/add_final_optional_silence.sh --final-sil-prob 0.5 data/lang
 fi
 
+# training language model
+lang_decode=data/lang_test
 if [ $stage -le 4 ]; then
+  echo "$0: Estimating a language model for decoding..."
+  local/train_lm.sh
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
+                     data/local/dict/lexicon.txt $lang_decode
+fi
+
+if [ $stage -le 5 ]; then
   utils/subset_data_dir.sh --speakers data/train 300000 data/train_unsup || exit 1
   utils/subset_data_dir.sh data/train_unsup 100000 data/train_unsup100k || exit 1
   cp data/train/allowed_lengths.txt data/train_unsup/allowed_lengths.txt
@@ -115,18 +124,18 @@ if [ $stage -le 4 ]; then
   utils/subset_data_dir.sh data/test 2000 data/test_2k2
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 6 ]; then
   utils/combine_data.sh data/semisup10k_100k \
     data/train_sup10k data/train_unsup100k || exit 1
 fi
 
 # training flat-start system
-if [ $stage -le 6 ]; then
+if [ $stage -le 7 ]; then
   echo "$0: Calling the flat-start chain recipe... $(date)."
   local/chain/run_e2e_cnn.sh --train-set train_sup10k --nj 30
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
@@ -134,23 +143,9 @@ if [ $stage -le 7 ]; then
 fi
 
 # training baseline system
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
   local/chain/run_cnn_e2eali.sh --train-set train_sup10k --nj 50
-fi
-
-# training language model
-lang_decode=data/lang_test
-decode_e2e=false
-if [ $stage -le 9 ]; then
-  echo "$0: Estimating a language model for decoding..."
-  mkdir -p data/local/pocolm_ex250k
-  utils/filter_scp.pl --exclude data/train_unsup100k/utt2spk \
-    data/train/text > data/local/pocolm_ex250k/text.tmp
-
-  local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
-                     data/local/dict/lexicon.txt $lang_decode
 fi
 
 # training semi-supervised system
