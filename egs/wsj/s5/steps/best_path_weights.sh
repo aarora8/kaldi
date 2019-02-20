@@ -66,7 +66,7 @@ if [ $stage -le 1 ]; then
   $cmd JOB=1:$nj $dir/log/best_path.JOB.log \
     lattice-best-path --acoustic-scale=$acwt \
       "ark,s,cs:gunzip -c $decode_dir/lat.JOB.gz |" \
-      ark:/dev/null "ark:| gzip -c > $dir/ali.JOB.gz" || exit 1
+      "ark,t:$dir/words.JOB.txt" "ark:| gzip -c > $dir/ali.JOB.gz" || exit 1
 fi
 
 # Find where the final.mdl is.

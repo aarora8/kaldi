@@ -17,9 +17,9 @@ writing_condition3=/export/corpora/LDC/LDC2013T15/docs/writing_conditions.tab
 data_splits_dir=data/download/data_splits
 images_scp_dir=data/local
 overwrite=false
-subset=true
+subset=false
 augment=false
-use_extra_corpus_text=true
+use_extra_corpus_text=false
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
@@ -101,27 +101,26 @@ if [ $stage -le 3 ]; then
                         data/local/dict "<sil>" data/lang/temp data/lang
   utils/lang/bpe/add_final_optional_silence.sh --final-sil-prob 0.5 data/lang
 fi
-
+exit
 if [ $stage -le 4 ]; then
-  utils/subset_data_dir.sh --speakers data/train 300000 data/train_sup || exit 1
-  utils/subset_data_dir.sh data/train_sup 10000 data/train_sup10k || exit 1
-  utils/subset_data_dir.sh --spk-list <(utils/filter_scp.pl --exclude data/train_sup/spk2utt data/train/spk2utt) data/train data/train_unsup10k
+  utils/subset_data_dir.sh --speakers data/train 300000 data/train_unsup || exit 1
+  utils/subset_data_dir.sh data/train_unsup 100000 data/train_unsup100k || exit 1
+  cp data/train/allowed_lengths.txt data/train_unsup/allowed_lengths.txt
+  cp data/train/allowed_lengths.txt data/train_unsup100k/allowed_lengths.txt
 
+  utils/subset_data_dir.sh --speakers data/dev 100000 data/train_sup
+  utils/subset_data_dir.sh data/train_sup 100000 data/train_sup10k
   cp data/train/allowed_lengths.txt data/train_sup10k/allowed_lengths.txt
-  cp data/train/allowed_lengths.txt data/train_unsup10k/allowed_lengths.txt
-  cp data/train/allowed_lengths.txt data/train_sup/allowed_lengths.txt
-
-  utils/subset_data_dir.sh --speakers data/train_unsup10k 100000 data/train_unsup10k_100k
-  cp data/train/allowed_lengths.txt data/train_unsup10k_100k/allowed_lengths.txt
 
   utils/subset_data_dir.sh data/test 2000 data/test_2k2
 fi
 
 if [ $stage -le 5 ]; then
   utils/combine_data.sh data/semisup10k_100k \
-    data/train_sup10k data/train_unsup10k_100k || exit 1
+    data/train_sup10k data/train_unsup100k || exit 1
 fi
 
+# training flat-start system
 if [ $stage -le 6 ]; then
   echo "$0: Calling the flat-start chain recipe... $(date)."
   local/chain/run_e2e_cnn.sh --train-set train_sup10k --nj 30
@@ -134,17 +133,19 @@ if [ $stage -le 7 ]; then
                        data/train_sup10k data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 
+# training baseline system
 if [ $stage -le 8 ]; then
   echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
   local/chain/run_cnn_e2eali.sh --train-set train_sup10k --nj 50
 fi
 
+# training language model
 lang_decode=data/lang_test
 decode_e2e=false
 if [ $stage -le 9 ]; then
   echo "$0: Estimating a language model for decoding..."
   mkdir -p data/local/pocolm_ex250k
-  utils/filter_scp.pl --exclude data/train_unsup10k_100k/utt2spk \
+  utils/filter_scp.pl --exclude data/train_unsup100k/utt2spk \
     data/train/text > data/local/pocolm_ex250k/text.tmp
 
   local/train_lm.sh
@@ -152,27 +153,20 @@ if [ $stage -le 9 ]; then
                      data/local/dict/lexicon.txt $lang_decode
 fi
 
-if [ $stage -le 10 ] && $decode_e2e; then
-  echo "$0: $(date) stage 10: decoding end2end setup..."
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang_decode \
-    exp/chain/e2e_cnn_1a/ exp/chain/e2e_cnn_1a/graph || exit 1;
-
-  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 --nj 30 --cmd "$cmd" \
-    exp/chain/e2e_cnn_1a/graph data/test_2k2 exp/chain/e2e_cnn_1a/decode_test || exit 1;
-fi
-
+# training semi-supervised system
 lat_dir=exp/chain/e2e_train_sup10k_lats
 if [ $stage -le 11 ]; then
   local/semisup/chain/run_cnn_chainali_semisupervised_1b.sh \
     --supervised-set train_sup10k \
-    --unsupervised-set train_unsup10k_100k \
+    --unsupervised-set train_unsup100k \
     --sup-chain-dir exp/chain/cnn_e2eali_1b \
     --sup-lat-dir exp/chain/e2e_train_sup10k_lats \
     --sup-tree-dir exp/chain/tree_e2e \
     --tdnn-affix _1b_tol1_beam4 \
-    --exp-root exp/semisup_56k || exit 1
+    --exp-root exp/semisup || exit 1
 fi
 
+# training oracle system
 if [ $stage -le 12 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
