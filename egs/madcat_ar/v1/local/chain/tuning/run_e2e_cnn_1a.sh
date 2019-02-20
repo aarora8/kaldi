@@ -31,8 +31,7 @@ minibatch_size=150=128,64/300=128,64/600=64,32/1200=32,16
 common_egs_dir=
 cmvn_opts="--norm-means=false --norm-vars=false"
 train_set=train
-lang_decode=data/lang
-lang_rescore=data/lang_rescore_6g
+lang_decode=data/lang_test
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -153,11 +152,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --nj $nj --cmd "$cmd" \
-    $dir/graph data/test_2k2 $dir/decode_test_2k2 || exit 1;
+    $dir/graph data/test_2k2 $dir/decode_test.2k2 || exit 1;
 fi
-
-echo "Done. Date: $(date). Results:"
-local/chain/compare_wer.sh $dir
