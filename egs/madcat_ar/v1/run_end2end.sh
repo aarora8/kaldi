@@ -63,18 +63,18 @@ fi
 
 if [ $stage -le 1 ]; then
   echo "$0: Obtaining image groups. calling get_image2num_frames $(date)."
-  #image/get_image2num_frames.py data/train
-  #image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
+  image/get_image2num_frames.py data/train
+  image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
 
-  for set in dev; do
+  for set in dev train test; do
     echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $set. $(date)"
     local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$set
     steps/compute_cmvn_stats.sh data/$set || exit 1;
   done
-  #echo "$0: Fixing data directory for train dataset $(date)."
-  #utils/fix_data_dir.sh data/train
+  echo "$0: Fixing data directory for train dataset $(date)."
+  utils/fix_data_dir.sh data/train
 fi
-exit
+
 if [ $stage -le 2 ]; then
   echo "$0: Preparing BPE..."
   cut -d' ' -f2- data/train/text | utils/lang/bpe/reverse.py | \
