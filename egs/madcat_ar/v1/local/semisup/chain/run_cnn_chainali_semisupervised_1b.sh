@@ -82,7 +82,7 @@ if [ $stage -le 8 ]; then
     $sup_chain_dir/decode_$unsupervised_set \
     $sup_chain_dir/best_path_$unsupervised_set
 fi
-
+exit
 frame_subsampling_factor=4
 if [ -f $sup_chain_dir/frame_subsampling_factor ]; then
   frame_subsampling_factor=$(cat $sup_chain_dir/frame_subsampling_factor)
@@ -181,9 +181,9 @@ unsup_frames_per_eg=340  # Using a frames-per-eg of 150 for unsupervised data
                          # (160,140,110,80) like for supervised system
 lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices when
                       # creating numerator supervision
-lattice_prune_beam=8.0  # beam for pruning the lattices prior to getting egs
+lattice_prune_beam=4.0  # beam for pruning the lattices prior to getting egs
                         # for unsupervised data
-tolerance=1   # frame-tolerance for chain training
+tolerance=2   # frame-tolerance for chain training
 
 unsup_lat_dir=$sup_chain_dir/decode_$unsupervised_set
 if [ -z "$unsup_egs_dir" ]; then
