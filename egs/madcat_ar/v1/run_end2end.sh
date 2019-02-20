@@ -117,8 +117,7 @@ if [ $stage -le 5 ]; then
   cp data/train/allowed_lengths.txt data/train_unsup/allowed_lengths.txt
   cp data/train/allowed_lengths.txt data/train_unsup100k/allowed_lengths.txt
 
-  utils/subset_data_dir.sh --speakers data/dev 100000 data/train_sup
-  utils/subset_data_dir.sh data/train_sup 100000 data/train_sup10k
+  utils/subset_data_dir.sh data/dev 10000 data/train_sup10k
   cp data/train/allowed_lengths.txt data/train_sup10k/allowed_lengths.txt
 
   utils/subset_data_dir.sh data/test 2000 data/test_2k2
