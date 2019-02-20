@@ -58,11 +58,18 @@ if [ $stage -le 0 ]; then
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
 
-  cat data/dev/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
+  #cat data/dev/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
 
   # use the training data as an additional data source.
   # we can later fold the dev data into this.
-  cat data/local/pocolm_ex250k/text.tmp | cut -d " " -f 2- >  ${dir}/data/text/train.txt
+  #cat data/local/pocolm_ex250k/text.tmp | cut -d " " -f 2- >  ${dir}/data/text/train.txt
+  head -900000 data/local/gigawordcorpus/arb_gw_5/data/nhr_arb_combined.txt | \
+      utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
+      | sed 's/@@//g' > ${dir}/data/text/train.txt
+
+  tail -10000 data/local/gigawordcorpus/arb_gw_5/data/nhr_arb_combined.txt | \
+      utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
+      | sed 's/@@//g' > ${dir}/data/text/dev.txt
 
   # for reporting perplexities, we'll use the "real" dev set.
   # (the validation data is used as ${dir}/data/text/dev.txt to work
