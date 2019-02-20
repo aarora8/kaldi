@@ -155,7 +155,7 @@ fi
 
 # training semi-supervised system
 lat_dir=exp/chain/e2e_train_sup10k_lats
-if [ $stage -le 11 ]; then
+if [ $stage -le 10 ]; then
   local/semisup/chain/run_cnn_chainali_semisupervised_1b.sh \
     --supervised-set train_sup10k \
     --unsupervised-set train_unsup100k \
@@ -167,14 +167,14 @@ if [ $stage -le 11 ]; then
 fi
 
 # training oracle system
-if [ $stage -le 12 ]; then
+if [ $stage -le 11 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
                        data/semisup10k_100k data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train.full
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 12 ]; then
   echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
   local/chain/run_cnn_chainali_semisupervised_1b.sh --train-set semisup10k_100k  --nj 50
 fi
