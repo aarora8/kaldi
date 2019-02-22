@@ -23,7 +23,7 @@ stage=0
 nj=70
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1b.ep4  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 e2echain_model_dir=exp/chain/e2e_cnn_1a
 common_egs_dir=
 reporting_email=
@@ -183,11 +183,11 @@ if [ $stage -le 5 ]; then
     --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
     --chain.frame-subsampling-factor=$frame_subsampling_factor \
     --chain.alignment-subsampling-factor=1 \
-    --chain.left-tolerance 3 \
-    --chain.right-tolerance 3 \
+    --chain.left-tolerance 1 \
+    --chain.right-tolerance 1 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=4 \
+    --trainer.num-epochs=5 \
     --trainer.frames-per-iter=1000000 \
     --trainer.optimization.num-jobs-initial=5 \
     --trainer.optimization.num-jobs-final=8 \
@@ -216,7 +216,6 @@ if [ $stage -le 6 ]; then
   # topology file from the model).  So you could give it a different
   # lang directory, one that contained a wordlist and LM of your choice,
   # as long as phones.txt was compatible.
-
   utils/mkgraph.sh \
     --self-loop-scale 1.0 $lang_decode \
     $dir $dir/graph || exit 1;

@@ -82,7 +82,7 @@ if [ $stage -le 8 ]; then
     $sup_chain_dir/decode_$unsupervised_set \
     $sup_chain_dir/best_path_$unsupervised_set
 fi
-exit
+
 frame_subsampling_factor=4
 if [ -f $sup_chain_dir/frame_subsampling_factor ]; then
   frame_subsampling_factor=$(cat $sup_chain_dir/frame_subsampling_factor)

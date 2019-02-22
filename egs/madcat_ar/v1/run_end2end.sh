@@ -115,22 +115,28 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  utils/subset_data_dir.sh --speakers data/train 300000 data/train_unsup || exit 1
-  utils/subset_data_dir.sh data/train_unsup 100000 data/train_unsup100k || exit 1
-  cp data/train/allowed_lengths.txt data/train_unsup/allowed_lengths.txt
-  cp data/train/allowed_lengths.txt data/train_unsup100k/allowed_lengths.txt
-
+  utils/subset_data_dir.sh data/train 150000 data/train_unsup150k || exit 1
   utils/subset_data_dir.sh data/dev 10000 data/train_sup10k
-  cp data/train/allowed_lengths.txt data/train_sup10k/allowed_lengths.txt
+  utils/subset_data_dir.sh --speakers data/test 5000 data/test_5k
 
-  utils/subset_data_dir.sh data/test 2000 data/test_2k2
+  local/get_unique_utterances.py data/train_sup10k/text.old > data/train_sup10k/uttlist
+  local/get_unique_utterances.py data/train_unsup150k/text.old > data/train_unsup150k/uttlist
+
+  utils/subset_data_dir.sh --utt-list data/train_unsup150k/uttlist data/train_unsup150k data/train_unsup
+  utils/subset_data_dir.sh --utt-list data/train_sup10k/uttlist data/train_sup10k data/train_sup
+
+  local/remove_sup_utts_from_unsup.py data/train_sup/text.old data/train_unsup/text.old > data/local/unsup_uttlist
+  utils/subset_data_dir.sh --utt-list data/local/unsup_uttlist data/train_unsup data/train_unsup_unique
+
+  cp data/train/allowed_lengths.txt data/train_unsup_unique/allowed_lengths.txt
+  cp data/dev/allowed_lengths.txt data/train_sup/allowed_lengths.txt
 fi
 
 if [ $stage -le 6 ]; then
-  utils/combine_data.sh data/semisup10k_100k \
-    data/train_sup10k data/train_unsup100k || exit 1
+  utils/combine_data.sh data/semisup \
+    data/train_sup data/train_unsup_unique || exit 1
 fi
-
+exit
 # training flat-start system
 if [ $stage -le 7 ]; then
   echo "$0: Calling the flat-start chain recipe... $(date)."
