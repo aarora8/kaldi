@@ -70,7 +70,7 @@ fi
 if [ $stage -le 5 ]; then
   steps/nnet3/decode_semisup.sh --num-threads 4 --nj 45 --cmd "$cmd" --beam 15 \
             --frames-per-chunk 340 \
-            --acwt 1.0 --post-decode-acwt 10.0 --write-compact false --skip-scoring false \
+            --acwt 1.0 --post-decode-acwt 10.0 --write-compact false \
             --scoring-opts "--min-lmwt 10 --max-lmwt 10" --word-determinize false \
             $graphdir data/$unsupervised_set $sup_chain_dir/decode_$unsupervised_set
 fi
@@ -183,7 +183,7 @@ lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattice
                       # creating numerator supervision
 lattice_prune_beam=4.0  # beam for pruning the lattices prior to getting egs
                         # for unsupervised data
-tolerance=2   # frame-tolerance for chain training
+tolerance=1   # frame-tolerance for chain training
 
 unsup_lat_dir=$sup_chain_dir/decode_$unsupervised_set
 if [ -z "$unsup_egs_dir" ]; then
@@ -249,7 +249,7 @@ if [ $stage -le 15 ]; then
     --trainer.optimization.momentum=0.0 \
     --trainer.frames-per-iter=2000000 \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs 2 \
+    --trainer.num-epochs 3 \
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.optimization.num-jobs-initial 6 \
     --trainer.optimization.num-jobs-final 8 \
@@ -274,7 +274,7 @@ fi
 if [ $stage -le 18 ]; then
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
       --frames-per-chunk 340 --nj 45 --cmd "$cmd" \
-      $dir/graph data/test_2k2 $dir/decode_test_2k2
+      $dir/graph data/test_5k $dir/decode_test.5k
 fi
 exit 0;
 

@@ -123,8 +123,8 @@ if [ $stage -le 3 ]; then
     --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 2000000 \
-    --trainer.num-epochs 2 \
+    --trainer.frames-per-iter 1500000 \
+    --trainer.num-epochs 4 \
     --trainer.optimization.momentum 0 \
     --trainer.optimization.num-jobs-initial 5 \
     --trainer.optimization.num-jobs-final 8 \

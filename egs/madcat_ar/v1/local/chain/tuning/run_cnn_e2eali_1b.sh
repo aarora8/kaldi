@@ -226,5 +226,5 @@ if [ $stage -le 7 ]; then
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --frames-per-chunk $frames_per_chunk \
     --nj $nj --cmd "$cmd" \
-    $dir/graph data/test_2k2 $dir/decode_test.2k2 || exit 1;
+    $dir/graph data/test_5k $dir/decode_test.5k || exit 1;
 fi

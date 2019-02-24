@@ -39,7 +39,7 @@ ali_dir=exp/chain/e2e_ali_train.full
 lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats_chain
 dir=exp/chain${nnet3_affix}/cnn_chainali${affix}
 train_data_dir=data/${train_set}
-tree_dir=exp/chain${nnet3_affix}/tree_chain
+tree_dir=exp/chain${nnet3_affix}/tree_e2e
 dropout_schedule='0,0@0.20,0.2@0.50,0'
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
@@ -83,22 +83,22 @@ if [ $stage -le 2 ]; then
   echo "" >$lat_dir/splice_opts
 fi
 
-if [ $stage -le 3 ]; then
-  # Build a tree using our new topology.  We know we have alignments for the
-  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
-  # those.  The num-leaves is always somewhat less than the num-leaves from
-  # the GMM baseline.
-   if [ -f $tree_dir/final.mdl ]; then
-     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-     exit 1;
-  fi
-  steps/nnet3/chain/build_tree.sh \
-    --frame-subsampling-factor 4 \
-    --alignment-subsampling-factor 1 \
-    --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$cmd" $num_leaves $train_data_dir \
-    $lang $ali_dir $tree_dir
-fi
+#if [ $stage -le 3 ]; then
+#  # Build a tree using our new topology.  We know we have alignments for the
+#  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
+#  # those.  The num-leaves is always somewhat less than the num-leaves from
+#  # the GMM baseline.
+#   if [ -f $tree_dir/final.mdl ]; then
+#     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+#     exit 1;
+#  fi
+#  steps/nnet3/chain/build_tree.sh \
+#    --frame-subsampling-factor 4 \
+#    --alignment-subsampling-factor 1 \
+#    --context-opts "--context-width=2 --central-position=1" \
+#    --cmd "$cmd" $num_leaves $train_data_dir \
+#    $lang $ali_dir $tree_dir
+#fi
 
 if [ $stage -le 4 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
@@ -177,6 +177,6 @@ fi
 if [ $stage -le 7 ]; then
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
       --frames-per-chunk 340 --nj 45 --cmd "$cmd" \
-      $dir/graph data/test_2k2 $dir/decode_test_2k2
+      $dir/graph data/test_5k $dir/decode_test.5k
 fi
 exit 0;
