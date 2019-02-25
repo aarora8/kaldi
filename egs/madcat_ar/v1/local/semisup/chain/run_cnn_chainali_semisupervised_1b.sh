@@ -240,8 +240,8 @@ if [ $stage -le 15 ]; then
     --chain.apply-deriv-weights=true \
     --chain.frame-subsampling-factor=$frame_subsampling_factor \
     --chain.alignment-subsampling-factor=1 \
-    --chain.left-tolerance 3 \
-    --chain.right-tolerance 3 \
+    --chain.left-tolerance 1 \
+    --chain.right-tolerance 1 \
     --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=900" \
     --trainer.srand=0 \
     --trainer.optimization.shrink-value=1.0 \
@@ -249,7 +249,7 @@ if [ $stage -le 15 ]; then
     --trainer.optimization.momentum=0.0 \
     --trainer.frames-per-iter=2000000 \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs 3 \
+    --trainer.num-epochs 2 \
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.optimization.num-jobs-initial 6 \
     --trainer.optimization.num-jobs-final 8 \
