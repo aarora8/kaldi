@@ -165,7 +165,7 @@ if [ $stage -le 10 ]; then
     --sup-chain-dir exp/chain/cnn_e2eali_1b \
     --sup-lat-dir exp/chain/e2e_train_sup_lats \
     --sup-tree-dir exp/chain/tree_e2e \
-    --tdnn-affix _1b_tol1_beam42.ep3 \
+    --tdnn-affix _1b_tol1_beam4.egsfull \
     --stage 10 \
     --exp-root exp/semisup || exit 1
 fi

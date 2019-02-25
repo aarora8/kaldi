@@ -11,7 +11,7 @@ test_nj=30
 # dir=${exp_root}/chain${chain_affix}/tdnn${tdnn_affix}
 exp_root=exp/semisup_100k
 chain_affix=    # affix for chain dir
-tdnn_affix=_semisup_1b3_prune8  # affix for semi-supervised chain system
+tdnn_affix=_semisup  # affix for semi-supervised chain system
 
 # Datasets-Expects supervised_set and unsupervised_set
 supervised_set=train
@@ -176,7 +176,7 @@ else
   frames_per_eg=$(cat $sup_egs_dir/info/frames_per_eg)
 fi
 
-unsup_frames_per_eg=340  # Using a frames-per-eg of 150 for unsupervised data
+unsup_frames_per_eg=340,300,200,100  # Using a frames-per-eg of 150 for unsupervised data
                          # was found to be better than allowing smaller chunks
                          # (160,140,110,80) like for supervised system
 lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices when
