@@ -189,7 +189,7 @@ if [ $stage -le 5 ]; then
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=5 \
     --trainer.frames-per-iter=1000000 \
-    --trainer.optimization.num-jobs-initial=5 \
+    --trainer.optimization.num-jobs-initial=6 \
     --trainer.optimization.num-jobs-final=8 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
@@ -199,7 +199,7 @@ if [ $stage -le 5 ]; then
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --egs.chunk-width=$chunk_width \
     --egs.dir="$common_egs_dir" \
-    --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
+    --egs.opts="--frames-overlap-per-eg 0 --constrained true" \
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --reporting.email="$reporting_email" \
@@ -209,22 +209,22 @@ if [ $stage -le 5 ]; then
     --dir=$dir  || exit 1;
 fi
 
-if [ $stage -le 6 ]; then
-  # The reason we are using data/lang here, instead of $lang, is just to
-  # emphasize that it's not actually important to give mkgraph.sh the
-  # lang directory with the matched topology (since it gets the
-  # topology file from the model).  So you could give it a different
-  # lang directory, one that contained a wordlist and LM of your choice,
-  # as long as phones.txt was compatible.
-  utils/mkgraph.sh \
-    --self-loop-scale 1.0 $lang_decode \
-    $dir $dir/graph || exit 1;
-fi
-
-if [ $stage -le 7 ]; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --frames-per-chunk $frames_per_chunk \
-    --nj $nj --cmd "$cmd" \
-    $dir/graph data/test_5k $dir/decode_test.5k || exit 1;
-fi
+#if [ $stage -le 6 ]; then
+#  # The reason we are using data/lang here, instead of $lang, is just to
+#  # emphasize that it's not actually important to give mkgraph.sh the
+#  # lang directory with the matched topology (since it gets the
+#  # topology file from the model).  So you could give it a different
+#  # lang directory, one that contained a wordlist and LM of your choice,
+#  # as long as phones.txt was compatible.
+#  utils/mkgraph.sh \
+#    --self-loop-scale 1.0 $lang_decode \
+#    $dir $dir/graph || exit 1;
+#fi
+#
+#if [ $stage -le 7 ]; then
+#  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+#  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+#    --frames-per-chunk $frames_per_chunk \
+#    --nj $nj --cmd "$cmd" \
+#    $dir/graph data/test_5k $dir/decode_test.5k || exit 1;
+#fi

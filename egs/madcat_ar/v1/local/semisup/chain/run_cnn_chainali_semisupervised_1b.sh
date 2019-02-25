@@ -255,7 +255,7 @@ if [ $stage -le 15 ]; then
     --trainer.optimization.num-jobs-final 8 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
-    --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
+    --egs.opts="--frames-overlap-per-eg 0 --constrained true" \
     --cleanup.remove-egs false \
     --feat-dir data/$supervised_set \
     --tree-dir $sup_tree_dir \
