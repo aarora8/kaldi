@@ -35,7 +35,7 @@ where "nvcc" is installed.
 EOF
 fi
 
-ali_dir=exp/chain/e2e_ali_train.full
+ali_dir=exp/chain/e2e_ali_train.semisup50k
 lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats_chain
 dir=exp/chain${nnet3_affix}/cnn_chainali${affix}
 train_data_dir=data/${train_set}

@@ -110,21 +110,41 @@ lang_decode=data/lang_test
 if [ $stage -le 4 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.train80k.arpa.gz \
                      data/local/dict/lexicon.txt $lang_decode
 fi
 
+#if [ $stage -le 5 ]; then
+#  utils/subset_data_dir.sh data/train 150000 data/train_unsup150k || exit 1
+#  utils/subset_data_dir.sh data/dev 10000 data/train_sup10k
+#  utils/subset_data_dir.sh data/test 5000 data/test_5k
+#
+#  local/get_unique_utterances.py data/train_sup10k/text.old > data/train_sup10k/uttlist
+#  local/get_unique_utterances.py data/train_unsup150k/text.old > data/train_unsup150k/uttlist
+#
+#  utils/subset_data_dir.sh --utt-list data/train_unsup150k/uttlist data/train_unsup150k data/train_unsup
+#  utils/subset_data_dir.sh --utt-list data/train_sup10k/uttlist data/train_sup10k data/train_sup
+#
+#  local/remove_sup_utts_from_unsup.py data/train_sup/text.old data/train_unsup/text.old > data/local/unsup_uttlist
+#  utils/subset_data_dir.sh --utt-list data/local/unsup_uttlist data/train_unsup data/train_unsup_unique
+#
+#  cp data/train/allowed_lengths.txt data/train_unsup_unique/allowed_lengths.txt
+#  cp data/dev/allowed_lengths.txt data/train_sup/allowed_lengths.txt
+#fi
+
 if [ $stage -le 5 ]; then
-  utils/subset_data_dir.sh data/train 150000 data/train_unsup150k || exit 1
+
+  local/get_unique_utterances.py data/train/text.old > data/train/uttlist.full
+  head -40000 data/train/uttlist.full > data/train/uttlist.40k
+  utils/subset_data_dir.sh --utt-list data/train/uttlist.40k data/train data/train_unsup
+  tail +40000 data/train/uttlist.full > data/train/uttlist.tail.80k
+  utils/subset_data_dir.sh --utt-list data/train/uttlist.tail.80k data/train data/train_LM
+
   utils/subset_data_dir.sh data/dev 10000 data/train_sup10k
-  utils/subset_data_dir.sh data/test 5000 data/test_5k
-
   local/get_unique_utterances.py data/train_sup10k/text.old > data/train_sup10k/uttlist
-  local/get_unique_utterances.py data/train_unsup150k/text.old > data/train_unsup150k/uttlist
-
-  utils/subset_data_dir.sh --utt-list data/train_unsup150k/uttlist data/train_unsup150k data/train_unsup
   utils/subset_data_dir.sh --utt-list data/train_sup10k/uttlist data/train_sup10k data/train_sup
 
+  utils/subset_data_dir.sh data/test 5000 data/test_5k
   local/remove_sup_utts_from_unsup.py data/train_sup/text.old data/train_unsup/text.old > data/local/unsup_uttlist
   utils/subset_data_dir.sh --utt-list data/local/unsup_uttlist data/train_unsup data/train_unsup_unique
 
@@ -166,16 +186,15 @@ if [ $stage -le 10 ]; then
     --sup-lat-dir exp/chain/e2e_train_sup_lats \
     --sup-tree-dir exp/chain/tree_e2e \
     --tdnn-affix _1b_tol1_beam4 \
-    --exp-root exp/semisup || exit 1
+    --exp-root exp/semisup.unsup40k || exit 1
 fi
-exit
+
 # training oracle system
 if [ $stage -le 11 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
-                       --use-gpu false \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/semisup data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train.full
+                       data/semisup data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train.semisup50k
 fi
 
 if [ $stage -le 12 ]; then
