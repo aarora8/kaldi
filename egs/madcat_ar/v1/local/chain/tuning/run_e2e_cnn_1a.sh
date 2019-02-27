@@ -138,21 +138,21 @@ if [ $stage -le 3 ]; then
     --dir $dir  || exit 1;
 fi
 
-#if [ $stage -le 4 ]; then
-#  # The reason we are using data/lang here, instead of $lang, is just to
-#  # emphasize that it's not actually important to give mkgraph.sh the
-#  # lang directory with the matched topology (since it gets the
-#  # topology file from the model).  So you could give it a different
-#  # lang directory, one that contained a wordlist and LM of your choice,
-#  # as long as phones.txt was compatible.
-#
-#  utils/mkgraph.sh \
-#    --self-loop-scale 1.0 $lang_decode \
-#    $dir $dir/graph || exit 1;
-#fi
-#
-#if [ $stage -le 5 ]; then
-#  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-#    --nj $nj --cmd "$cmd" \
-#    $dir/graph data/test_5k $dir/decode_test.5k || exit 1;
-#fi
+if [ $stage -le 4 ]; then
+  # The reason we are using data/lang here, instead of $lang, is just to
+  # emphasize that it's not actually important to give mkgraph.sh the
+  # lang directory with the matched topology (since it gets the
+  # topology file from the model).  So you could give it a different
+  # lang directory, one that contained a wordlist and LM of your choice,
+  # as long as phones.txt was compatible.
+
+  utils/mkgraph.sh \
+    --self-loop-scale 1.0 $lang_decode \
+    $dir $dir/graph || exit 1;
+fi
+
+if [ $stage -le 5 ]; then
+  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+    --nj $nj --cmd "$cmd" \
+    $dir/graph data/test_5k $dir/decode_test.5k || exit 1;
+fi

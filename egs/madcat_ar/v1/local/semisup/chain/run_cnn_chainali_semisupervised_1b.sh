@@ -16,7 +16,6 @@ tdnn_affix=_semisup  # affix for semi-supervised chain system
 # Datasets-Expects supervised_set and unsupervised_set
 supervised_set=train
 unsupervised_set=train_unsup
-
 # Input seed system
 sup_chain_dir=exp/chain/cnn_e2eali_1b  # supervised chain system
 sup_lat_dir=exp/chain/e2e_train_lats  # Seed model options
@@ -41,6 +40,7 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 lang_decode=data/lang_test
+lang_rescore=data/lang_rescore_6g
 dropout_schedule='0,0@0.20,0.2@0.50,0'
 dir=$exp_root/chain$chain_affix/tdnn$tdnn_affix
 if ! cuda-compiled; then
@@ -52,6 +52,7 @@ EOF
 fi
 
 graphdir=$sup_chain_dir/graph_unsup
+unsupervised_set_big=train_unsup_unique
 for f in data/$supervised_set/feats.scp \
   data/$unsupervised_set/feats.scp \
   $sup_lat_dir/lat.1.gz $sup_tree_dir/ali.1.gz \
@@ -67,20 +68,31 @@ if [ ! -f $graphdir/HCLG.fst ]; then
 fi
 
 # Decode unsupervised data and write lattices in non-compact
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   steps/nnet3/decode_semisup.sh --num-threads 4 --nj 45 --cmd "$cmd" --beam 15 \
             --frames-per-chunk 340 \
             --acwt 1.0 --post-decode-acwt 10.0 --write-compact false \
-            --scoring-opts "--min-lmwt 10 --max-lmwt 10" --word-determinize false \
-            $graphdir data/$unsupervised_set $sup_chain_dir/decode_$unsupervised_set
+            --scoring-opts "--min-lmwt 8 --max-lmwt 8" --word-determinize false \
+            $graphdir data/$unsupervised_set $sup_chain_dir/decode_${unsupervised_set}
 fi
+
+## Rescore undeterminized lattices with larger LM
+#if [ $stage -le 5 ]; then
+#  steps/lmrescore_const_arpa_undeterminized.sh --cmd "$cmd" \
+#    --acwt 0.1 --beam 8.0 \
+#    $lang_decode $lang_rescore \
+#    data/$unsupervised_set \
+#    $sup_chain_dir/decode_$unsupervised_set \
+#    $sup_chain_dir/decode_$unsupervised_set_big
+#  ln -sf ../final.mdl $sup_chain_dir/decode_$unsupervised_set_big/final.mdl
+#fi
 
 # Get best path alignment and lattice posterior of best path alignment to be
 if [ $stage -le 8 ]; then
   steps/best_path_weights.sh --cmd "${cmd}" --acwt 0.1 \
     data/$unsupervised_set \
-    $sup_chain_dir/decode_$unsupervised_set \
-    $sup_chain_dir/best_path_$unsupervised_set
+    $sup_chain_dir/decode_$unsupervised_set_big \
+    $sup_chain_dir/best_path_$unsupervised_set_big
 fi
 
 frame_subsampling_factor=4
@@ -96,7 +108,7 @@ diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree an
 if [ $stage -le 10 ]; then
   steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$cmd" \
     --lm_opts '--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000' \
-    $sup_tree_dir $sup_chain_dir/best_path_$unsupervised_set \
+    $sup_tree_dir $sup_chain_dir/best_path_$unsupervised_set_big \
     $dir
 fi
 
@@ -185,7 +197,7 @@ lattice_prune_beam=4.0  # beam for pruning the lattices prior to getting egs
                         # for unsupervised data
 tolerance=1   # frame-tolerance for chain training
 
-unsup_lat_dir=$sup_chain_dir/decode_$unsupervised_set
+unsup_lat_dir=$sup_chain_dir/decode_$unsupervised_set_big
 if [ -z "$unsup_egs_dir" ]; then
   unsup_egs_dir=$dir/egs_$unsupervised_set
 
@@ -206,7 +218,7 @@ if [ -z "$unsup_egs_dir" ]; then
       --frame-subsampling-factor $frame_subsampling_factor \
       --cmvn-opts "$cmvn_opts" --lattice-lm-scale $lattice_lm_scale \
       --lattice-prune-beam "$lattice_prune_beam" \
-      --deriv-weights-scp $sup_chain_dir/best_path_$unsupervised_set/weights.scp \
+      --deriv-weights-scp $sup_chain_dir/best_path_$unsupervised_set_big/weights.scp \
       --generate-egs-scp true $unsup_egs_opts \
       data/$unsupervised_set $dir \
       $unsup_lat_dir $unsup_egs_dir
