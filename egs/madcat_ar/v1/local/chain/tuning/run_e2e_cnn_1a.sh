@@ -23,7 +23,7 @@ stage=0
 nj=70
 train_stage=-10
 get_egs_stage=-10
-affix=1a
+affix=1a.semisup
 
 # training options
 tdnn_dim=450

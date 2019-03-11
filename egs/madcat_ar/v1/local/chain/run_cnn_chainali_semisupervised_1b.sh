@@ -6,8 +6,8 @@ stage=0
 nj=30
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1d.cnn8.100  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-chain_model_dir=exp/chain${nnet3_affix}/cnn_e2eali_1b
+affix=_1d.semisup50k3.uncon  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+chain_model_dir=exp/chain${nnet3_affix}/cnn_chainali_1a.ep5
 common_egs_dir=
 reporting_email=
 
@@ -35,18 +35,16 @@ where "nvcc" is installed.
 EOF
 fi
 
-ali_dir=exp/chain/e2e_ali_train.semisup50k
-lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats_chain
+lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats_chain.50k
 dir=exp/chain${nnet3_affix}/cnn_chainali${affix}
 train_data_dir=data/${train_set}
-tree_dir=exp/chain${nnet3_affix}/tree_e2e
+tree_dir=exp/chain${nnet3_affix}/tree_chainali
 dropout_schedule='0,0@0.20,0.2@0.50,0'
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
 # you should probably name it differently.
-lang=data/lang_chain2
-for f in $train_data_dir/feats.scp \
-    $ali_dir/ali.1.gz $ali_dir/final.mdl; do
+lang=data/lang_chain
+for f in $train_data_dir/feats.scp; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
@@ -107,7 +105,7 @@ if [ $stage -le 4 ]; then
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
-  common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=100"
+  common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
@@ -118,7 +116,6 @@ if [ $stage -le 4 ]; then
   conv-relu-batchnorm-dropout-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
   conv-relu-batchnorm-dropout-layer name=cnn6 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
   conv-relu-batchnorm-dropout-layer name=cnn7 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
-  conv-relu-batchnorm-dropout-layer name=cnn8 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
   relu-batchnorm-dropout-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim dropout-proportion=0.0
   relu-batchnorm-dropout-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim dropout-proportion=0.0
   relu-batchnorm-dropout-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim dropout-proportion=0.0
@@ -159,7 +156,7 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.num-jobs-final 8 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
-    --egs.opts="--frames-overlap-per-eg 0 --constrained true" \
+    --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
     --cleanup.remove-egs false \
     --feat-dir $train_data_dir \
     --tree-dir $tree_dir \

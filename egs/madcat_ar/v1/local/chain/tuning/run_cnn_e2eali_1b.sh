@@ -23,8 +23,8 @@ stage=0
 nj=70
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-e2echain_model_dir=exp/chain/e2e_cnn_1a
+affix=_1b.semisup.ep3  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+e2echain_model_dir=exp/chain/e2e_cnn_1a.semisup
 common_egs_dir=
 reporting_email=
 
@@ -56,11 +56,11 @@ where "nvcc" is installed.
 EOF
 fi
 
-ali_dir=exp/chain/e2e_ali_train
-lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats
+ali_dir=exp/chain/e2e_ali_semisup
+lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats.semisup
 dir=exp/chain${nnet3_affix}/cnn_e2eali${affix}
 train_data_dir=data/${train_set}
-tree_dir=exp/chain${nnet3_affix}/tree_e2e
+tree_dir=exp/chain${nnet3_affix}/tree_semisup
 
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
@@ -187,7 +187,7 @@ if [ $stage -le 5 ]; then
     --chain.right-tolerance 1 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=5 \
+    --trainer.num-epochs=3 \
     --trainer.frames-per-iter=1000000 \
     --trainer.optimization.num-jobs-initial=6 \
     --trainer.optimization.num-jobs-final=8 \

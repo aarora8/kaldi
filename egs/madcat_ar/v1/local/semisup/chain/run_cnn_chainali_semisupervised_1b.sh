@@ -11,7 +11,7 @@ test_nj=30
 # dir=${exp_root}/chain${chain_affix}/tdnn${tdnn_affix}
 exp_root=exp/semisup_100k
 chain_affix=    # affix for chain dir
-tdnn_affix=_semisup  # affix for semi-supervised chain system
+tdnn_affix=_semisup.uncon  # affix for semi-supervised chain system
 
 # Datasets-Expects supervised_set and unsupervised_set
 supervised_set=train
@@ -119,7 +119,7 @@ if [ $stage -le 11 ]; then
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
-  common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
+  common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=100"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
@@ -130,6 +130,7 @@ if [ $stage -le 11 ]; then
   conv-relu-batchnorm-dropout-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
   conv-relu-batchnorm-dropout-layer name=cnn6 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
   conv-relu-batchnorm-dropout-layer name=cnn7 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
+  conv-relu-batchnorm-dropout-layer name=cnn8 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
   relu-batchnorm-dropout-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim dropout-proportion=0.0
   relu-batchnorm-dropout-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim dropout-proportion=0.0
   relu-batchnorm-dropout-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim dropout-proportion=0.0
@@ -176,7 +177,7 @@ if [ -z "$sup_egs_dir" ]; then
                --left-context $egs_left_context --right-context $egs_right_context \
                --frame-subsampling-factor $frame_subsampling_factor \
                --alignment-subsampling-factor 1 \
-               --frames-overlap-per-eg 0 \
+               --frames-overlap-per-eg 0 --constrained false \
                --frames-per-eg $frames_per_eg \
                --frames-per-iter 2000000 \
                --cmvn-opts "$cmvn_opts" \
