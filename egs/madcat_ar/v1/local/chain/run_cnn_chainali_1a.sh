@@ -1,20 +1,5 @@
 #!/bin/bash
-
-# local/chain/compare_wer.sh exp/chain/cnn_e2eali_1a
-# System                      cnn_e2eali_1a_(dict_50k) cnn_e2eali_1a_(dict_50k + unk model)
-# WER                             13.30                    11.94
-# CER                              5.95                     5.15
-# WER val                         12.85                    10.71
-# CER val                          5.09                     4.03
-# Final train prob              -0.0562
-# Final valid prob              -0.0634
-# Final train prob (xent)       -0.8196
-# Final valid prob (xent)       -0.8816
-# Parameters                      3.96M
-
 # steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1a
-# exp/chain/cnn_e2eali_1a: num-iters=42 nj=2..4 num-params=4.0M dim=40->368 combine=-0.058->-0.058 (over 1) xent:train/valid[27,41,final]=(-2.67,-0.841,-0.820/-2.71,-0.892,-0.882) logprob:train/valid[27,41,final]=(-0.240,-0.060,-0.056/-0.245,-0.068,-0.063)
-
 set -e -o pipefail
 
 stage=0

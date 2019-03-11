@@ -75,7 +75,7 @@ lattice_prune_beam=         # If supplied, the lattices will be pruned to this b
                             # before being used to get supervisions.
 acwt=0.1   # For pruning
 deriv_weights_scp=
-generate_egs_scp=false
+generate_egs_scp=true
 
 echo "$0 $@"  # Print the command line for logging
 
