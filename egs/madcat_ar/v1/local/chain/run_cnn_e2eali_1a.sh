@@ -141,6 +141,7 @@ if [ $stage -le 5 ]; then
     --cleanup.remove-egs false \
     --feat-dir data/${train_set} \
     --tree-dir $treedir \
+    --lat-dir $lat_dir \
     --chain.left-tolerance 1 \
     --chain.right-tolerance 1 \
     --egs.chunk-width=$chunk_width
