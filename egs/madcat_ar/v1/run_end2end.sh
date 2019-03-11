@@ -147,12 +147,12 @@ fi
 
 train_set=train_sup
 # training flat-start system
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
   echo "$0: Calling the flat-start chain recipe... $(date)."
   local/chain/run_e2e_cnn_1a.sh --train-set train_sup --nj 30
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
@@ -160,7 +160,7 @@ if [ $stage -le 8 ]; then
 fi
 exit
 # training e2eali system
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
   local/chain/run_cnn_e2eali_1a.sh --train-set train_sup --nj 50
 fi

@@ -147,7 +147,7 @@ if [ $stage -le 5 ]; then
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 4 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 1500000 \
+    --trainer.frames-per-iter 100000 \
     --trainer.num-epochs 4 \
     --trainer.optimization.momentum 0 \
     --trainer.optimization.num-jobs-initial 5 \
