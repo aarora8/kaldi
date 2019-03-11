@@ -1,29 +1,15 @@
 #!/bin/bash
-# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1a
 set -e -o pipefail
-
 stage=0
-nj=30
+nj=70
 train_set=train
-decode_val=true
-nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-e2echain_model_dir=exp/chain/e2e_cnn_1a
-common_egs_dir=
-reporting_email=
-
-# chain options
 train_stage=-10
-xent_regularize=0.1
-frame_subsampling_factor=4
 chunk_width=340,300,200,100
 num_leaves=500
 tdnn_dim=450
-lang_decode=lang_test
-if $decode_val; then maybe_val=val; else maybe_val= ; fi
+lang_decode=data/lang_test
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
-
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -36,19 +22,23 @@ where "nvcc" is installed.
 EOF
 fi
 
-ali_dir=exp/chain/e2e_ali_train
-lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats
-dir=exp/chain${nnet3_affix}/cnn_e2eali${affix}
+affix=_1a_${train_set}
+chain_model_dir=exp/chain/cnn_e2eali${affix}
+#ali_dir=exp/chain/e2eali_$train_set
+lat_dir=exp/chain/chainali_${train_set}_lats
+dir=exp/chain/cnn_chainali${affix}
 train_data_dir=data/${train_set}
-tree_dir=exp/chain${nnet3_affix}/tree_e2e
-
+#use end2endali tree
+tree_dir=exp/chain/tree_chainali_${train_set}
+tree_dir=exp/chain/tree_e2eali_${train_set}
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
 # you should probably name it differently.
 lang=data/lang_chain
-for f in $train_data_dir/feats.scp $ali_dir/ali.1.gz $ali_dir/final.mdl; do
+for f in $train_data_dir/feats.scp; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
+
 
 if [ $stage -le 1 ]; then
   echo "$0: creating lang directory $lang with chain-type topology"
@@ -79,27 +69,26 @@ if [ $stage -le 2 ]; then
   steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" \
                             --acoustic-scale 1.0 \
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
-                            ${train_data_dir} data/lang $e2echain_model_dir $lat_dir
-  echo "" >$lat_dir/splice_opts
+                            ${train_data_dir} data/lang $chain_model_dir $lat_dir
+  cp exp/chain/e2eali_${train_set}_lats/splice_opts $lat_dir/splice_opts
 fi
 
-if [ $stage -le 3 ]; then
-  # Build a tree using our new topology.  We know we have alignments for the
-  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
-  # those.  The num-leaves is always somewhat less than the num-leaves from
-  # the GMM baseline.
-  if [ -f $tree_dir/final.mdl ]; then
-    echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-    exit 1;
-  fi
-
-  steps/nnet3/chain/build_tree.sh \
-    --frame-subsampling-factor 4 \
-    --alignment-subsampling-factor 1 \
-    --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$cmd" $num_leaves $train_data_dir \
-    $lang $ali_dir $tree_dir
-fi
+#if [ $stage -le 3 ]; then
+#  # Build a tree using our new topology.  We know we have alignments for the
+#  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
+#  # those.  The num-leaves is always somewhat less than the num-leaves from
+#  # the GMM baseline.
+#   if [ -f $tree_dir/final.mdl ]; then
+#     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+#     exit 1;
+#  fi
+#  steps/nnet3/chain/build_tree.sh \
+#    --frame-subsampling-factor 4 \
+#    --alignment-subsampling-factor 1 \
+#    --context-opts "--context-width=2 --central-position=1" \
+#    --cmd "$cmd" $num_leaves $train_data_dir \
+#    $lang $ali_dir $tree_dir
+#fi
 
 if [ $stage -le 2 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
@@ -109,7 +98,6 @@ if [ $stage -le 2 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
-
   conv-relu-batchnorm-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
   conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
@@ -129,7 +117,6 @@ fi
 if [ $stage -le 3 ]; then
   # no need to store the egs in a shared storage because we always
   # remove them. Anyway, it takes only 5 minutes to generate them.
-
   steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
     --cmd "$cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
@@ -140,13 +127,13 @@ if [ $stage -le 3 ]; then
     --egs.stage $get_egs_stage \
     --egs.opts "--num_egs_diagnostic 100 --num_utts_subset 400" \
     --chain.frame-subsampling-factor 4 \
-    --chain.alignment-subsampling-factor 4 \
-    --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 1500000 \
+    --chain.alignment-subsampling-factor 1 \
+    --trainer.num-chunk-per-minibatch 16,8 \
+    --trainer.frames-per-iter 500000 \
     --trainer.num-epochs 4 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial 5 \
-    --trainer.optimization.num-jobs-final 8 \
+    --trainer.optimization.num-jobs-initial 2 \
+    --trainer.optimization.num-jobs-final 4 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
@@ -154,6 +141,10 @@ if [ $stage -le 3 ]; then
     --cleanup.remove-egs false \
     --feat-dir data/${train_set} \
     --tree-dir $treedir \
+    --chain.left-tolerance 1 \
+    --chain.right-tolerance 1 \
+    --egs.chunk-width=$chunk_width
+    --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
     --dir $dir  || exit 1;
 fi
 
@@ -164,13 +155,13 @@ if [ $stage -le 4 ]; then
   # topology file from the model).  So you could give it a different
   # lang directory, one that contained a wordlist and LM of your choice,
   # as long as phones.txt was compatible.
-
   utils/mkgraph.sh \
     --self-loop-scale 1.0 $lang_decode \
     $dir $dir/graph || exit 1;
 fi
 
 if [ $stage -le 5 ]; then
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for decode_set in test; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
       --nj $nj --cmd "$cmd" \

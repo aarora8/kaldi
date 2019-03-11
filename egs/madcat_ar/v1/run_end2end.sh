@@ -152,71 +152,58 @@ if [ $stage -le 8 ]; then
   local/chain/run_e2e_cnn_1a.sh --train-set train_sup --nj 30
 fi
 
+# alignments are used in tree
 if [ $stage -le 9 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
                        data/train_sup data/lang_e2e exp/chain/e2e_cnn_1a_$train_set exp/chain/flatstartali_$train_set
 fi
-exit
+
 # training e2eali system
 if [ $stage -le 10 ]; then
   echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
   local/chain/run_cnn_e2eali_1a.sh --train-set train_sup --nj 50
 fi
 
-if [ $stage -le 8 ]; then
-  echo "$0: Aligning the training data using the e2e chain model..."
-  steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
-                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/train_sup data/lang_chain exp/chain/e2e_cnn_1a.semisup exp/chain/e2eali_train_sup
-fi
+# no need for alignments, use same tree from end2endali
+#if [ $stage -le 11 ]; then
+#  echo "$0: Aligning the training data using the e2e chain model..."
+#  steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
+#                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
+#                       data/train_sup data/lang_chain exp/chain/cnn_e2eali_1a_$train_set exp/chain/e2eali_$train_set
+#fi
 
-if [ $stage -le 11 ]; then
+# training baseline system
+if [ $stage -le 12 ]; then
   echo "$0: chain model using the chainali alignments..."
   local/chain/run_cnn_chainali_1a.sh --stage 2 --train-set train_sup
 fi
 
-# training baseline system
-if [ $stage -le 9 ]; then
+train_set=semisup
+## no need for alignments, use same tree from end2endali
+#if [ $stage -le 13 ]; then
+#  echo "$0: Aligning the training data using the e2e chain model..."
+#  steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
+#                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
+#                       data/semisup data/lang_chain exp/chain/cnn_chainali_1a_$train_set exp/chain/e2eali_$train_set
+#fi
+
+# training oracle system
+if [ $stage -le 14 ]; then
   echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_e2eali.sh --train-set semisup --nj 50
+  local/chain/run_cnn_chainali_semisupervised_1b.sh --train-set semisup  --nj 50
 fi
 
-if [ $stage -le 10 ]; then
-  echo "$0: Aligning the training data using the e2e chain model..."
-  steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
-                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/semisup data/lang_chain exp/chain/cnn_e2eali_1b.semisup exp/chain/chain_ali_train.semisup
-fi
-
-if [ $stage -le 11 ]; then
-  echo "$0: chain model using the chainali alignments..."
-  local/chain/tuning/run_cnn_chainali_1a.sh --stage 2 --train-set semisup
-fi
-exit
 # training semi-supervised system
-if [ $stage -le 12 ]; then
+train_set=train_sup
+if [ $stage -le 15 ]; then
   local/semisup/chain/run_cnn_chainali_semisupervised_1b.sh \
     --supervised-set train_sup \
     --unsupervised-set train_unsup_unique \
-    --sup-chain-dir exp/chain/cnn_chainali_1a.ep5 \
-    --sup-lat-dir exp/chain/e2e_train_sup_lats_chain \
-    --sup-tree-dir exp/chain/tree_chainali \
-    --tdnn-affix _1b_tol1_beam4.blchainali.uncon \
-    --stage 10 \
+    --sup-chain-dir exp/chain/cnn_chainali_1a_$train_set \
+    --sup-lat-dir exp/chain/chainali_${train_set}_lats\
+    --sup-tree-dir exp/chain/tree_e2eali_${train_set} \
+    --tdnn-affix _1a_tol1_beam4 \
     --exp-root exp/semisup.unsup40k || exit 1
-fi
-
-# training oracle system
-if [ $stage -le 13 ]; then
-  echo "$0: Aligning the training data using the e2e chain model..."
-  steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
-                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/semisup data/lang_chain exp/chain/cnn_chainali_1a.ep5 exp/chain/e2e_ali_train.semisup50kblchainali
-fi
-
-if [ $stage -le 14 ]; then
-  echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_chainali_semisupervised_1b.sh --train-set semisup  --nj 50 --stage 4
 fi

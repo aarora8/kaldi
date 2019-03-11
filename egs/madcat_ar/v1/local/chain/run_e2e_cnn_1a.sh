@@ -10,10 +10,9 @@ nj=30
 
 # training options
 tdnn_dim=450
-minibatch_size=150=100,64/300=50,32/600=25,16/1200=16,8
+minibatch_size=150=32,16/300=16,8/600=8,4/1200=4,2
 common_egs_dir=
 train_set=train
-affix=1a_$train_set
 lang_decode=data/lang_test
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -30,8 +29,9 @@ where "nvcc" is installed.
 EOF
 fi
 
+affix=1a_$train_set
 lang=data/lang_e2e
-treedir=exp/chain/e2e_bitree  # it's actually just a trivial tree (no tree building)
+treedir=exp/chain/e2e_monotree  # it's actually just a trivial tree (no tree building)
 dir=exp/chain/e2e_cnn_${affix}
 
 if [ $stage -le 0 ]; then
@@ -50,7 +50,7 @@ fi
 if [ $stage -le 1 ]; then
   steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$cmd" \
                                        --shared-phones true \
-                                       --type biphone \
+                                       --type mono \
                                        data/$train_set $lang $treedir
   $cmd $treedir/log/make_phone_lm.log \
   cat data/$train_set/text \| \
@@ -99,11 +99,11 @@ if [ $stage -le 3 ]; then
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 4 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 100000 \
+    --trainer.frames-per-iter 500000 \
     --trainer.num-epochs 4 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial 5 \
-    --trainer.optimization.num-jobs-final 8 \
+    --trainer.optimization.num-jobs-initial 2 \
+    --trainer.optimization.num-jobs-final 3 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
