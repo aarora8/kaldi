@@ -165,7 +165,7 @@ fi
 # training e2eali system
 if [ $stage -le 10 ]; then
   echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_e2eali_1a.sh --train-set train_sup --nj 50
+  local/chain/run_cnn_e2eali_1a.sh --train-set train_sup --nj 50 --stage 4
 fi
 
 # no need for alignments, use same tree from end2endali

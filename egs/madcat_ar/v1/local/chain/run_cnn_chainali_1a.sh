@@ -92,7 +92,7 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
-  num_targets=$(tree-info $treedir/tree | grep num-pdfs | awk '{print $2}')
+  num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   common1="height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="height-offsets=-2,-1,0,1,2 num-filters-out=70"
   mkdir -p $dir/configs
@@ -117,15 +117,13 @@ fi
 if [ $stage -le 3 ]; then
   # no need to store the egs in a shared storage because we always
   # remove them. Anyway, it takes only 5 minutes to generate them.
-  steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
+  steps/nnet3/chain/train.py --stage=$train_stage \
     --cmd "$cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --egs.dir "$common_egs_dir" \
-    --egs.stage $get_egs_stage \
-    --egs.opts "--num_egs_diagnostic 100 --num_utts_subset 400" \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 1 \
     --trainer.num-chunk-per-minibatch 16,8 \
@@ -140,11 +138,11 @@ if [ $stage -le 3 ]; then
     --trainer.max-param-change 2.0 \
     --cleanup.remove-egs false \
     --feat-dir data/${train_set} \
-    --tree-dir $treedir \
-    --lat-dir $lat_dir \
+    --tree-dir $tree_dir \
+    --lat-dir=$lat_dir \
     --chain.left-tolerance 1 \
     --chain.right-tolerance 1 \
-    --egs.chunk-width=$chunk_width
+    --egs.chunk-width=$chunk_width \
     --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
     --dir $dir  || exit 1;
 fi
