@@ -151,7 +151,7 @@ train_set=train_sup
 # training flat-start system
 if [ $stage -le 8 ]; then
   echo "$0: Calling the flat-start chain recipe... $(date)."
-  local/chain/run_e2e_cnn_1a.sh --train-set train_sup --nj 30
+  local/chain/run_e2e_cnn_1a.sh --train-set train_sup
 fi
 
 # alignments are used in tree
@@ -165,7 +165,7 @@ fi
 # training e2eali system
 if [ $stage -le 10 ]; then
   echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_e2eali_1a.sh --train-set train_sup --nj 50 --stage 4
+  local/chain/run_cnn_e2eali_1a.sh --train-set train_sup --stage 4
 fi
 
 # no need for alignments, use same tree from end2endali
@@ -194,7 +194,7 @@ train_set=semisup
 # training oracle system
 if [ $stage -le 14 ]; then
   echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_chainali_semisupervised_1b.sh --train-set semisup  --nj 50
+  local/chain/run_cnn_chainali_semisupervised_1b.sh --train-set semisup
 fi
 
 # training semi-supervised system

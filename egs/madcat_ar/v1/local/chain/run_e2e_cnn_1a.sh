@@ -6,7 +6,7 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-nj=30
+nj=70
 
 # training options
 tdnn_dim=450
