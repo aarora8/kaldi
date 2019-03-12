@@ -14,6 +14,7 @@ minibatch_size=150=32,16/300=16,8/600=8,4/1200=4,2
 common_egs_dir=
 train_set=train
 lang_decode=data/lang_test
+lang_rescore=data/lang_rescore_6g
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -132,6 +133,8 @@ if [ $stage -le 5 ]; then
       --nj $nj --cmd "$cmd" \
       $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
   done
+  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+                                data/$decode_set $dir/decode_${decode_set}{,_rescored} || exit 1
 fi
 
 echo "Done. Date: $(date). Results:"

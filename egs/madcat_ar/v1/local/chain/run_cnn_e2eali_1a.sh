@@ -8,6 +8,7 @@ chunk_width=340,300,200,100
 num_leaves=500
 tdnn_dim=450
 lang_decode=data/lang_test
+lang_rescore=data/lang_rescore_6g
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
@@ -166,6 +167,8 @@ if [ $stage -le 7 ]; then
       --nj $nj --cmd "$cmd" \
       $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
   done
+  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+                                data/$decode_set $dir/decode_${decode_set}{,_rescored} || exit 1
 fi
 
 echo "Done. Date: $(date). Results:"

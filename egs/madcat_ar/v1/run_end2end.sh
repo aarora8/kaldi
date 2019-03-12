@@ -119,10 +119,10 @@ fi
 if [ $stage -le 5 ]; then
   echo "$0:Preparing supervised and unsupervised data..."
   #local/get_unique_utterances.py data/train/text.old > data/train/uttlist.full
-  head -40000 data/train/uttlist.full > data/train/uttlist.40k
-  utils/subset_data_dir.sh --utt-list data/train/uttlist.40k data/train data/train_unsup
-  tail +40000 data/train/uttlist.full > data/train/uttlist.tail.80k
-  utils/subset_data_dir.sh --utt-list data/train/uttlist.tail.80k data/train data/train_LM
+  #head -40000 data/train/uttlist.full > data/train/uttlist.40k
+  #utils/subset_data_dir.sh --utt-list data/train/uttlist.40k data/train data/train_unsup
+  #tail +40000 data/train/uttlist.full > data/train/uttlist.tail.80k
+  #utils/subset_data_dir.sh --utt-list data/train/uttlist.tail.80k data/train data/train_LM
 
   utils/subset_data_dir.sh data/dev 4000 data/train_sup4k
   local/get_unique_utterances.py data/train_sup4k/text.old > data/train_sup4k/uttlist
@@ -194,13 +194,13 @@ train_set=semisup
 # training oracle system
 if [ $stage -le 14 ]; then
   echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_chainali_semisupervised_1b.sh --train-set semisup
+  local/chain/run_cnn_chainali_semisupervised_1a.sh --train-set semisup --stage 4
 fi
 
 # training semi-supervised system
 train_set=train_sup
 if [ $stage -le 15 ]; then
-  local/semisup/chain/run_cnn_chainali_semisupervised_1b.sh \
+  local/chain/run_cnn_chainali_semisupervised_1b.sh \
     --supervised-set train_sup \
     --unsupervised-set train_unsup_unique \
     --sup-chain-dir exp/chain/cnn_chainali_1a_$train_set \

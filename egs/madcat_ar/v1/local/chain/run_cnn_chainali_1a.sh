@@ -8,6 +8,7 @@ chunk_width=340,300,200,100
 num_leaves=500
 tdnn_dim=450
 lang_decode=data/lang_test
+lang_rescore=data/lang_rescore_6g
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
@@ -90,7 +91,7 @@ fi
 #    $lang $ali_dir $tree_dir
 #fi
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   common1="height-offsets=-2,-1,0,1,2 num-filters-out=36"
@@ -114,7 +115,7 @@ EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 5 ]; then
   # no need to store the egs in a shared storage because we always
   # remove them. Anyway, it takes only 5 minutes to generate them.
   steps/nnet3/chain/train.py --stage=$train_stage \
@@ -147,7 +148,7 @@ if [ $stage -le 3 ]; then
     --dir $dir  || exit 1;
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 6 ]; then
   # The reason we are using data/lang here, instead of $lang, is just to
   # emphasize that it's not actually important to give mkgraph.sh the
   # lang directory with the matched topology (since it gets the
@@ -159,13 +160,15 @@ if [ $stage -le 4 ]; then
     $dir $dir/graph || exit 1;
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 7 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for decode_set in test; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
       --nj $nj --cmd "$cmd" \
       $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
   done
+  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+                                data/$decode_set $dir/decode_${decode_set}{,_rescored} || exit 1
 fi
 
 echo "Done. Date: $(date). Results:"

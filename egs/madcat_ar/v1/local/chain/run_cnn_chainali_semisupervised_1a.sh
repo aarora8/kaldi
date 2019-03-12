@@ -8,6 +8,8 @@ chunk_width=340,300,200,100
 num_leaves=500
 tdnn_dim=450
 lang_decode=data/lang_test
+lang_rescore=data/lang_rescore_6g
+dropout_schedule='0,0@0.20,0.2@0.50,0'
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
@@ -23,14 +25,14 @@ EOF
 fi
 
 affix=_1a_semisup${train_set}
-chain_model_dir=exp/chain/cnn_e2eali${affix}
+chain_model_dir=exp/chain/cnn_e2eali_1a_train_sup
 #ali_dir=exp/chain/e2eali_$train_set
 lat_dir=exp/chain/chainali_${train_set}_lats
 dir=exp/chain/cnn_chainali${affix}
 train_data_dir=data/${train_set}
 #use end2endali tree
 tree_dir=exp/chain/tree_chainali_${train_set}
-tree_dir=exp/chain/tree_e2eali_${train_set}
+tree_dir=exp/chain/tree_e2eali_train_sup
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
 # you should probably name it differently.
@@ -71,7 +73,7 @@ if [ $stage -le 2 ]; then
                             --acoustic-scale 1.0 \
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
                             ${train_data_dir} data/lang $chain_model_dir $lat_dir
-  cp exp/chain/e2eali_${train_set}_lats/splice_opts $lat_dir/splice_opts
+  cp exp/chain/e2eali_train_sup_lats/splice_opts $lat_dir/splice_opts
 fi
 
 #if [ $stage -le 3 ]; then
@@ -91,7 +93,7 @@ fi
 #    $lang $ali_dir $tree_dir
 #fi
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
@@ -120,43 +122,41 @@ EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 5 ]; then
   # no need to store the egs in a shared storage because we always
   # remove them. Anyway, it takes only 5 minutes to generate them.
-  steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
+  steps/nnet3/chain/train.py --stage=$train_stage \
     --cmd "$cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --egs.dir "$common_egs_dir" \
-    --egs.stage $get_egs_stage \
-    --egs.opts "--num_egs_diagnostic 100 --num_utts_subset 400" \
-    --chain.xent-regularize $xent_regularize \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 1 \
-    --trainer.num-chunk-per-minibatch 16,8 \
-    --trainer.frames-per-iter 500000 \
-    --trainer.num-epochs 4 \
+    --trainer.num-chunk-per-minibatch 32,16 \
+    --trainer.frames-per-iter 1500000 \
+    --trainer.num-epochs 2 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial 2 \
-    --trainer.optimization.num-jobs-final 4 \
+    --trainer.optimization.num-jobs-initial 5 \
+    --trainer.optimization.num-jobs-final 8 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
     --trainer.max-param-change 2.0 \
+    --trainer.dropout-schedule $dropout_schedule \
     --cleanup.remove-egs false \
     --feat-dir data/${train_set} \
-    --tree-dir $treedir \
-    --lat-dir $lat_dir \
+    --tree-dir $tree_dir \
+    --lat-dir=$lat_dir \
     --chain.left-tolerance 1 \
     --chain.right-tolerance 1 \
-    --egs.chunk-width=$chunk_width
+    --egs.chunk-width=$chunk_width \
     --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
     --dir $dir  || exit 1;
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 6 ]; then
   # The reason we are using data/lang here, instead of $lang, is just to
   # emphasize that it's not actually important to give mkgraph.sh the
   # lang directory with the matched topology (since it gets the
@@ -168,13 +168,15 @@ if [ $stage -le 4 ]; then
     $dir $dir/graph || exit 1;
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 7 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for decode_set in test; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
       --nj $nj --cmd "$cmd" \
       $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
   done
+  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+                                data/$decode_set $dir/decode_${decode_set}{,_rescored} || exit 1
 fi
 
 echo "Done. Date: $(date). Results:"
