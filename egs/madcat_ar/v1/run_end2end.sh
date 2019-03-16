@@ -133,6 +133,8 @@ if [ $stage -le 5 ]; then
 
   cp data/train/allowed_lengths.txt data/train_unsup_unique/allowed_lengths.txt
   cp data/dev/allowed_lengths.txt data/train_sup/allowed_lengths.txt
+
+  utils/subset_data_dir.sh data/test 5000 data/test_5k
 fi
 
 if [ $stage -le 6 ]; then
@@ -204,7 +206,7 @@ if [ $stage -le 15 ]; then
     --supervised-set train_sup \
     --unsupervised-set train_unsup_unique \
     --sup-chain-dir exp/chain/cnn_chainali_1a_$train_set \
-    --sup-lat-dir exp/chain/chainali_${train_set}_lats\
+    --sup-lat-dir exp/chain/chainali_${train_set}_lats \
     --sup-tree-dir exp/chain/tree_e2eali_${train_set} \
     --tdnn-affix _1a_tol1_beam4 \
     --exp-root exp/semisup.unsup40k || exit 1

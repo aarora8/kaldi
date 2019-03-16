@@ -123,7 +123,7 @@ if [ $stage -le 5 ]; then
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
-    --chain.apply-deriv-weights false \
+    --chain.apply-deriv-weights true \
     --egs.dir "$common_egs_dir" \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 1 \

@@ -24,9 +24,9 @@ where "nvcc" is installed.
 EOF
 fi
 
-affix=_1a_semisup${train_set}
-chain_model_dir=exp/chain/cnn_e2eali_1a_train_sup
-#ali_dir=exp/chain/e2eali_$train_set
+affix=_1a_oracle.denfst.ep4.filterwidthheight${train_set}
+chain_model_dir=exp/chain/cnn_chainali_1a_train_sup
+#ali_dir=exp/chain/chainali_$train_set
 lat_dir=exp/chain/chainali_${train_set}_lats
 dir=exp/chain/cnn_chainali${affix}
 train_data_dir=data/${train_set}
@@ -38,6 +38,7 @@ tree_dir=exp/chain/tree_e2eali_train_sup
 # you should probably name it differently.
 lang=data/lang_chain
 xent_regularize=0.1
+lm_weights=3,2  # Weights on phone counts from supervised, unsupervised data for denominator FST creation
 for f in $train_data_dir/feats.scp; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
@@ -73,7 +74,7 @@ if [ $stage -le 2 ]; then
                             --acoustic-scale 1.0 \
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
                             ${train_data_dir} data/lang $chain_model_dir $lat_dir
-  cp exp/chain/e2eali_train_sup_lats/splice_opts $lat_dir/splice_opts
+  cp exp/chain/chainali_train_sup_lats/splice_opts $lat_dir/splice_opts
 fi
 
 #if [ $stage -le 3 ]; then
@@ -93,7 +94,24 @@ fi
 #    $lang $ali_dir $tree_dir
 #fi
 
+# Get best path alignment and lattice posterior of best path alignment to be
 if [ $stage -le 4 ]; then
+  steps/best_path_weights.sh --cmd "${cmd}" --acwt 0.1 \
+    data/train_unsup_unique \
+    $lat_dir \
+    $chain_model_dir/best_path_train_unsup_unique
+fi
+
+# Train denominator FST using phone alignments from
+# supervised and unsupervised data
+if [ $stage -le 5 ]; then
+  steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$cmd" \
+    --lm_opts '--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000' \
+    $tree_dir $chain_model_dir/best_path_train_unsup_unique \
+    $dir
+fi
+
+if [ $stage -le 6 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
@@ -122,24 +140,31 @@ EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
 fi
 
-if [ $stage -le 5 ]; then
-  # no need to store the egs in a shared storage because we always
-  # remove them. Anyway, it takes only 5 minutes to generate them.
+if [ $train_stage -le -4 ]; then
+  # This is to skip stages of den-fst creation, which was already done.
+  train_stage=-4
+fi
+
+if [ $stage -le 7 ]; then
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
+    utils/create_split_dir.pl \
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/iam-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+  fi
   steps/nnet3/chain/train.py --stage=$train_stage \
     --cmd "$cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
-    --chain.apply-deriv-weights false \
+    --chain.apply-deriv-weights true \
     --egs.dir "$common_egs_dir" \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 1 \
     --trainer.num-chunk-per-minibatch 32,16 \
     --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs 2 \
+    --trainer.num-epochs 4 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial 5 \
-    --trainer.optimization.num-jobs-final 8 \
+    --trainer.optimization.num-jobs-initial 3 \
+    --trainer.optimization.num-jobs-final 5 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
@@ -156,7 +181,7 @@ if [ $stage -le 5 ]; then
     --dir $dir  || exit 1;
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 8 ]; then
   # The reason we are using data/lang here, instead of $lang, is just to
   # emphasize that it's not actually important to give mkgraph.sh the
   # lang directory with the matched topology (since it gets the
@@ -168,7 +193,7 @@ if [ $stage -le 6 ]; then
     $dir $dir/graph || exit 1;
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 9 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for decode_set in test; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \

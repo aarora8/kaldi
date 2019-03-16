@@ -93,7 +93,7 @@ if [ $stage -le 3 ]; then
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
-    --chain.apply-deriv-weights false \
+    --chain.apply-deriv-weights true \
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
     --egs.opts "--num_egs_diagnostic 100 --num_utts_subset 400" \

@@ -4,22 +4,18 @@ set -e -o pipefail
 stage=0   # Start from -1 for supervised seed system training
 train_stage=-100
 nj=70
-test_nj=30
-
-# The following 3 options decide the output directory for semi-supervised 
-# chain system
 # dir=${exp_root}/chain${chain_affix}/tdnn${tdnn_affix}
 exp_root=exp/semisup_100k
 chain_affix=    # affix for chain dir
 tdnn_affix=_semisup.uncon  # affix for semi-supervised chain system
 
 # Datasets-Expects supervised_set and unsupervised_set
-supervised_set=train
+supervised_set=train_sup
 unsupervised_set=train_unsup
 # Input seed system
-sup_chain_dir=exp/chain/cnn_e2eali_1b  # supervised chain system
-sup_lat_dir=exp/chain/e2e_train_lats  # Seed model options
-sup_tree_dir=exp/chain/tree_e2e  # tree directory for supervised chain system
+sup_chain_dir=exp/chain/cnn_chainali_1b  # supervised chain system
+sup_lat_dir=exp/chain/chainali_train_sup_lats  # Seed model options
+sup_tree_dir=exp/chain/tree_e2eali_train_sup  # tree directory for supervised chain system
 
 # Semi-supervised options
 supervision_weights=1.0,1.0   # Weights for supervised, unsupervised data egs.
@@ -103,7 +99,6 @@ fi
 
 if [ $stage -le 11 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
-
   num_targets=$(tree-info $sup_tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
@@ -237,7 +232,7 @@ if [ $stage -le 15 ]; then
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
-    --chain.apply-deriv-weights=false \
+    --chain.apply-deriv-weights=true \
     --chain.frame-subsampling-factor=$frame_subsampling_factor \
     --chain.alignment-subsampling-factor=1 \
     --chain.left-tolerance 1 \
@@ -248,10 +243,10 @@ if [ $stage -le 15 ]; then
     --trainer.optimization.momentum=0.0 \
     --trainer.frames-per-iter=1500000 \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs 2 \
+    --trainer.num-epochs 4 \
     --trainer.dropout-schedule $dropout_schedule \
-    --trainer.optimization.num-jobs-initial 5 \
-    --trainer.optimization.num-jobs-final 8 \
+    --trainer.optimization.num-jobs-initial 3 \
+    --trainer.optimization.num-jobs-final 5 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
@@ -260,7 +255,6 @@ if [ $stage -le 15 ]; then
     --tree-dir $sup_tree_dir \
     --lat-dir $sup_lat_dir \
     --dir $dir || exit 1;
-
 fi
 
 if [ $stage -le 17 ]; then
