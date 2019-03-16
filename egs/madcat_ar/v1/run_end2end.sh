@@ -62,9 +62,9 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  #echo "$0: Obtaining image groups. calling get_image2num_frames $(date)."
-  #image/get_image2num_frames.py data/train
-  #image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
+  echo "$0: Obtaining image groups. calling get_image2num_frames $(date)."
+  image/get_image2num_frames.py data/train
+  image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
 
   image/get_image2num_frames.py data/dev
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/dev
@@ -118,11 +118,11 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0:Preparing supervised and unsupervised data..."
-  #local/get_unique_utterances.py data/train/text.old > data/train/uttlist.full
-  #head -40000 data/train/uttlist.full > data/train/uttlist.40k
-  #utils/subset_data_dir.sh --utt-list data/train/uttlist.40k data/train data/train_unsup
-  #tail +40000 data/train/uttlist.full > data/train/uttlist.tail.80k
-  #utils/subset_data_dir.sh --utt-list data/train/uttlist.tail.80k data/train data/train_LM
+  local/get_unique_utterances.py data/train/text.old > data/train/uttlist.full
+  head -40000 data/train/uttlist.full > data/train/uttlist.40k
+  utils/subset_data_dir.sh --utt-list data/train/uttlist.40k data/train data/train_unsup
+  tail +40000 data/train/uttlist.full > data/train/uttlist.tail.80k
+  utils/subset_data_dir.sh --utt-list data/train/uttlist.tail.80k data/train data/train_LM
 
   utils/subset_data_dir.sh data/dev 4000 data/train_sup4k
   local/get_unique_utterances.py data/train_sup4k/text.old > data/train_sup4k/uttlist
@@ -171,12 +171,12 @@ if [ $stage -le 10 ]; then
 fi
 
 # no need for alignments, use same tree from end2endali
-#if [ $stage -le 11 ]; then
-#  echo "$0: Aligning the training data using the e2e chain model..."
-#  steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
-#                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-#                       data/train_sup data/lang_chain exp/chain/cnn_e2eali_1a_$train_set exp/chain/e2eali_$train_set
-#fi
+if [ $stage -le 11 ]; then
+  echo "$0: Aligning the training data using the e2e chain model..."
+  steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
+                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
+                       data/train_sup data/lang_chain exp/chain/cnn_e2eali_1a_$train_set exp/chain/e2eali_$train_set
+fi
 
 # training baseline system
 if [ $stage -le 12 ]; then
@@ -184,25 +184,17 @@ if [ $stage -le 12 ]; then
   local/chain/run_cnn_chainali_1a.sh --stage 2 --train-set train_sup
 fi
 
-train_set=semisup
-## no need for alignments, use same tree from end2endali
-#if [ $stage -le 13 ]; then
-#  echo "$0: Aligning the training data using the e2e chain model..."
-#  steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
-#                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-#                       data/semisup data/lang_chain exp/chain/cnn_chainali_1a_$train_set exp/chain/e2eali_$train_set
-#fi
-
 # training oracle system
-if [ $stage -le 14 ]; then
+train_set=semisup
+if [ $stage -le 13 ]; then
   echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_chainali_semisupervised_1a.sh --train-set semisup --stage 4
+  local/chain/run_cnn_chainali_oracle_1a.sh --train-set semisup --stage 2
 fi
 
 # training semi-supervised system
 train_set=train_sup
-if [ $stage -le 15 ]; then
-  local/chain/run_cnn_chainali_semisupervised_1b.sh \
+if [ $stage -le 14 ]; then
+  local/chain/run_cnn_chainali_semisupervised_1a.sh \
     --supervised-set train_sup \
     --unsupervised-set train_unsup_unique \
     --sup-chain-dir exp/chain/cnn_chainali_1a_$train_set \

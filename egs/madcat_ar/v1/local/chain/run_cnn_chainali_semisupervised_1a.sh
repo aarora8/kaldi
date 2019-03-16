@@ -1,21 +1,44 @@
 #!/bin/bash
+
 set -e -o pipefail
-stage=0
+stage=0   # Start from -1 for supervised seed system training
+train_stage=-100
 nj=70
-train_set=train
-train_stage=-10
-chunk_width=340,300,200,100
-num_leaves=500
-tdnn_dim=450
-lang_decode=data/lang_test
-lang_rescore=data/lang_rescore_6g
-dropout_schedule='0,0@0.20,0.2@0.50,0'
+# dir=${exp_root}/chain${chain_affix}/tdnn${tdnn_affix}
+exp_root=exp/semisup_100k
+chain_affix=    # affix for chain dir
+tdnn_affix=_semisup.uncon  # affix for semi-supervised chain system
+
+# Datasets-Expects supervised_set and unsupervised_set
+supervised_set=train_sup
+unsupervised_set=train_unsup
+# Input seed system
+sup_chain_dir=exp/chain/cnn_chainali_1b  # supervised chain system
+sup_lat_dir=exp/chain/chainali_train_sup_lats  # Seed model options
+sup_tree_dir=exp/chain/tree_e2eali_train_sup  # tree directory for supervised chain system
+
+# Semi-supervised options
+supervision_weights=1.0,1.0   # Weights for supervised, unsupervised data egs.
+                              # Can be used to scale down the effect of unsupervised data
+                              # by using a smaller scale for it e.g. 1.0,0.3
+lm_weights=3,2  # Weights on phone counts from supervised, unsupervised data for denominator FST creation
+
+sup_egs_dir=   # Supply this to skip supervised egs creation
+unsup_egs_dir=  # Supply this to skip unsupervised egs creation
+unsup_egs_opts=  # Extra options to pass to unsupervised egs creation
+# Neural network opts
+xent_regularize=0.1
+tdnn_dim=550
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
+
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
-
+lang_decode=data/lang_test
+lang_rescore=data/lang_rescore_6g
+dropout_schedule='0,0@0.20,0.2@0.50,0'
+dir=$exp_root/chain$chain_affix/tdnn$tdnn_affix
 if ! cuda-compiled; then
   cat <<EOF && exit 1
 This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
@@ -24,96 +47,59 @@ where "nvcc" is installed.
 EOF
 fi
 
-affix=_1a_oracle.denfst.ep4.filterwidthheight${train_set}
-chain_model_dir=exp/chain/cnn_chainali_1a_train_sup
-#ali_dir=exp/chain/chainali_$train_set
-lat_dir=exp/chain/chainali_${train_set}_lats
-dir=exp/chain/cnn_chainali${affix}
-train_data_dir=data/${train_set}
-#use end2endali tree
-tree_dir=exp/chain/tree_chainali_${train_set}
-tree_dir=exp/chain/tree_e2eali_train_sup
-# the 'lang' directory is created by this script.
-# If you create such a directory with a non-standard topology
-# you should probably name it differently.
-lang=data/lang_chain
-xent_regularize=0.1
-lm_weights=3,2  # Weights on phone counts from supervised, unsupervised data for denominator FST creation
-for f in $train_data_dir/feats.scp; do
-  [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
+graphdir=$sup_chain_dir/graph_unsup
+unsupervised_set=train_unsup_unique
+for f in data/$supervised_set/feats.scp \
+  data/$unsupervised_set/feats.scp \
+  $sup_lat_dir/lat.1.gz $sup_tree_dir/ali.1.gz \
+  $lang_decode/G.fst; do
+  if [ ! -f $f ]; then
+    echo "$0: Could not find file $f"
+    exit 1
+  fi
 done
 
-
-if [ $stage -le 1 ]; then
-  echo "$0: creating lang directory $lang with chain-type topology"
-  # Create a version of the lang/ directory that has one state per phone in the
-  # topo file. [note, it really has two states.. the first one is only repeated
-  # once, the second one has zero or more repeats.]
-  if [ -d $lang ]; then
-    if [ $lang/L.fst -nt data/lang/L.fst ]; then
-      echo "$0: $lang already exists, not overwriting it; continuing"
-    else
-      echo "$0: $lang already exists and seems to be older than data/lang..."
-      echo " ... not sure what to do.  Exiting."
-      exit 1;
-    fi
-  else
-    cp -r data/lang $lang
-    silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
-    nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
-    # Use our special topology... note that later on may have to tune this
-    # topology.
-    steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
-  fi
+if [ ! -f $graphdir/HCLG.fst ]; then
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_decode_unsup $sup_chain_dir $graphdir
 fi
 
-if [ $stage -le 2 ]; then
-  # Get the alignments as lattices (gives the chain training more freedom).
-  # use the same num-jobs as the alignments
-  steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" \
-                            --acoustic-scale 1.0 \
-                            --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
-                            ${train_data_dir} data/lang $chain_model_dir $lat_dir
-  cp exp/chain/chainali_train_sup_lats/splice_opts $lat_dir/splice_opts
+# Decode unsupervised data and write lattices in non-compact
+if [ $stage -le 4 ]; then
+  steps/nnet3/decode_semisup.sh --num-threads 4 --nj 45 --cmd "$cmd" --beam 15 \
+            --frames-per-chunk 340 \
+            --acwt 1.0 --post-decode-acwt 10.0 --write-compact false \
+            --scoring-opts "--min-lmwt 8 --max-lmwt 8" --word-determinize false \
+            $graphdir data/$unsupervised_set $sup_chain_dir/decode_${unsupervised_set}
 fi
-
-#if [ $stage -le 3 ]; then
-#  # Build a tree using our new topology.  We know we have alignments for the
-#  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
-#  # those.  The num-leaves is always somewhat less than the num-leaves from
-#  # the GMM baseline.
-#   if [ -f $tree_dir/final.mdl ]; then
-#     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-#     exit 1;
-#  fi
-#  steps/nnet3/chain/build_tree.sh \
-#    --frame-subsampling-factor 4 \
-#    --alignment-subsampling-factor 1 \
-#    --context-opts "--context-width=2 --central-position=1" \
-#    --cmd "$cmd" $num_leaves $train_data_dir \
-#    $lang $ali_dir $tree_dir
-#fi
 
 # Get best path alignment and lattice posterior of best path alignment to be
-if [ $stage -le 4 ]; then
+if [ $stage -le 8 ]; then
   steps/best_path_weights.sh --cmd "${cmd}" --acwt 0.1 \
-    data/train_unsup_unique \
-    $lat_dir \
-    $chain_model_dir/best_path_train_unsup_unique
+    data/$unsupervised_set \
+    $sup_chain_dir/decode_$unsupervised_set \
+    $sup_chain_dir/best_path_$unsupervised_set
 fi
+
+frame_subsampling_factor=4
+if [ -f $sup_chain_dir/frame_subsampling_factor ]; then
+  frame_subsampling_factor=$(cat $sup_chain_dir/frame_subsampling_factor)
+fi
+cmvn_opts=$(cat $sup_chain_dir/cmvn_opts) || exit 1
+
+diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree and $sup_chain_dir/tree differ"; exit 1; }
 
 # Train denominator FST using phone alignments from
 # supervised and unsupervised data
-if [ $stage -le 5 ]; then
+if [ $stage -le 10 ]; then
   steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$cmd" \
     --lm_opts '--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000' \
-    $tree_dir $chain_model_dir/best_path_train_unsup_unique \
+    $sup_tree_dir $sup_chain_dir/best_path_$unsupervised_set \
     $dir
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 11 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
-  num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
+  num_targets=$(tree-info $sup_tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
@@ -135,9 +121,101 @@ if [ $stage -le 6 ]; then
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
   relu-batchnorm-layer name=prefinal-xent input=tdnn3 dim=$tdnn_dim target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+
+  # We use separate outputs for supervised and unsupervised data
+  # so we can properly track the train and valid objectives.
+  output name=output-0 input=output.affine
+  output name=output-1 input=output.affine
+  output name=output-0-xent input=output-xent.log-softmax
+  output name=output-1-xent input=output-xent.log-softmax
 EOF
 
-  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
+fi
+
+# Get values for $model_left_context, $model_right_context
+. $dir/configs/vars
+
+left_context=$model_left_context
+right_context=$model_right_context
+
+egs_left_context=$(perl -e "print int($left_context + $frame_subsampling_factor / 2)")
+egs_right_context=$(perl -e "print int($right_context + $frame_subsampling_factor / 2)")
+
+if [ -z "$sup_egs_dir" ]; then
+  sup_egs_dir=$dir/egs_$supervised_set
+  frames_per_eg=$(cat $sup_chain_dir/egs/info/frames_per_eg)
+
+  if [ $stage -le 12 ]; then
+    if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $sup_egs_dir/storage ]; then
+      utils/create_split_dir.pl \
+       /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$sup_egs_dir/storage $sup_egs_dir/storage
+    fi
+    mkdir -p $sup_egs_dir/
+    touch $sup_egs_dir/.nodelete # keep egs around when that run dies.
+
+    echo "$0: generating egs from the supervised data"
+    steps/nnet3/chain/get_egs.sh --cmd "$cmd" \
+               --left-tolerance 1 --right-tolerance 1 \
+               --left-context $egs_left_context --right-context $egs_right_context \
+               --frame-subsampling-factor $frame_subsampling_factor \
+               --alignment-subsampling-factor 1 \
+               --frames-overlap-per-eg 0 --constrained false \
+               --frames-per-eg $frames_per_eg \
+               --frames-per-iter 1500000 \
+               --cmvn-opts "$cmvn_opts" \
+               --generate-egs-scp true \
+               data/${supervised_set} $dir \
+               $sup_lat_dir $sup_egs_dir
+  fi
+else
+  frames_per_eg=$(cat $sup_egs_dir/info/frames_per_eg)
+fi
+
+unsup_frames_per_eg=340,300,200,100  # Using a frames-per-eg of 150 for unsupervised data
+                         # was found to be better than allowing smaller chunks
+                         # (160,140,110,80) like for supervised system
+lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices when
+                      # creating numerator supervision
+lattice_prune_beam=4.0  # beam for pruning the lattices prior to getting egs
+                        # for unsupervised data
+tolerance=1   # frame-tolerance for chain training
+
+unsup_lat_dir=$sup_chain_dir/decode_$unsupervised_set
+if [ -z "$unsup_egs_dir" ]; then
+  unsup_egs_dir=$dir/egs_$unsupervised_set
+
+  if [ $stage -le 13 ]; then
+    if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $unsup_egs_dir/storage ]; then
+      utils/create_split_dir.pl \
+       /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$unsup_egs_dir/storage $unsup_egs_dir/storage
+    fi
+    mkdir -p $unsup_egs_dir
+    touch $unsup_egs_dir/.nodelete # keep egs around when that run dies.
+
+    echo "$0: generating egs from the unsupervised data"
+    steps/nnet3/chain/get_egs.sh \
+      --cmd "$cmd" --alignment-subsampling-factor 1 \
+      --left-tolerance $tolerance --right-tolerance $tolerance \
+      --left-context $egs_left_context --right-context $egs_right_context \
+      --frames-per-eg $unsup_frames_per_eg --frames-per-iter 1500000 \
+      --frame-subsampling-factor $frame_subsampling_factor \
+      --cmvn-opts "$cmvn_opts" --lattice-lm-scale $lattice_lm_scale \
+      --lattice-prune-beam "$lattice_prune_beam" \
+      --deriv-weights-scp $sup_chain_dir/best_path_$unsupervised_set/weights.scp \
+      --generate-egs-scp true $unsup_egs_opts \
+      data/$unsupervised_set $dir \
+      $unsup_lat_dir $unsup_egs_dir
+  fi
+fi
+
+comb_egs_dir=$dir/comb_egs
+if [ $stage -le 14 ]; then
+  steps/nnet3/chain/multilingual/combine_egs.sh --cmd "$cmd" \
+    --block-size 64 \
+    --lang2weight $supervision_weights 2 \
+    $sup_egs_dir $unsup_egs_dir $comb_egs_dir
+  touch $comb_egs_dir/.nodelete # keep egs around when that run dies.
 fi
 
 if [ $train_stage -le -4 ]; then
@@ -145,43 +223,41 @@ if [ $train_stage -le -4 ]; then
   train_stage=-4
 fi
 
-if [ $stage -le 7 ]; then
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
-    utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/iam-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
-  fi
-  steps/nnet3/chain/train.py --stage=$train_stage \
+chunk_width=340,300,200,100
+if [ $stage -le 15 ]; then
+  steps/nnet3/chain/train.py --stage $train_stage \
+    --egs.dir "$comb_egs_dir" \
+    --egs.chunk-width=$chunk_width \
     --cmd "$cmd" \
-    --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
-    --chain.apply-deriv-weights true \
-    --egs.dir "$common_egs_dir" \
-    --chain.frame-subsampling-factor 4 \
-    --chain.alignment-subsampling-factor 1 \
-    --trainer.num-chunk-per-minibatch 32,16 \
-    --trainer.frames-per-iter 1500000 \
+    --chain.apply-deriv-weights=true \
+    --chain.frame-subsampling-factor=$frame_subsampling_factor \
+    --chain.alignment-subsampling-factor=1 \
+    --chain.left-tolerance 1 \
+    --chain.right-tolerance 1 \
+    --trainer.srand=0 \
+    --trainer.optimization.shrink-value=1.0 \
+    --trainer.num-chunk-per-minibatch=32,16 \
+    --trainer.optimization.momentum=0.0 \
+    --trainer.frames-per-iter=1500000 \
+    --trainer.max-param-change=2.0 \
     --trainer.num-epochs 4 \
-    --trainer.optimization.momentum 0 \
+    --trainer.dropout-schedule $dropout_schedule \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 5 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
-    --trainer.optimization.shrink-value 1.0 \
-    --trainer.max-param-change 2.0 \
-    --trainer.dropout-schedule $dropout_schedule \
-    --cleanup.remove-egs false \
-    --feat-dir data/${train_set} \
-    --tree-dir $tree_dir \
-    --lat-dir=$lat_dir \
-    --chain.left-tolerance 1 \
-    --chain.right-tolerance 1 \
-    --egs.chunk-width=$chunk_width \
     --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
-    --dir $dir  || exit 1;
+    --cleanup.remove-egs false \
+    --feat-dir data/$supervised_set \
+    --tree-dir $sup_tree_dir \
+    --lat-dir $sup_lat_dir \
+    --dir $dir || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 17 ]; then
   # The reason we are using data/lang here, instead of $lang, is just to
   # emphasize that it's not actually important to give mkgraph.sh the
   # lang directory with the matched topology (since it gets the
@@ -193,7 +269,7 @@ if [ $stage -le 8 ]; then
     $dir $dir/graph || exit 1;
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 18 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for decode_set in test; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
