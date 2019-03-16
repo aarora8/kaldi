@@ -24,7 +24,7 @@ where "nvcc" is installed.
 EOF
 fi
 
-affix=_1a_oracle.denfst.ep4.filterwidthheight${train_set}
+affix=_1a_oracle_${train_set}
 chain_model_dir=exp/chain/cnn_chainali_1a_train_sup
 #ali_dir=exp/chain/chainali_$train_set
 lat_dir=exp/chain/chainali_${train_set}_lats

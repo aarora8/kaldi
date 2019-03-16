@@ -200,5 +200,5 @@ if [ $stage -le 14 ]; then
     --sup-lat-dir exp/chain/chainali_${train_set}_lats \
     --sup-tree-dir exp/chain/tree_chainali_${train_set} \
     --tdnn-affix _1a_tol1_beam4 \
-    --exp-root exp/semisup.unsup40k || exit 1
+    --exp-root exp/semisup || exit 1
 fi

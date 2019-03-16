@@ -9,6 +9,7 @@ num_leaves=500
 tdnn_dim=450
 lang_decode=data/lang_test
 lang_rescore=data/lang_rescore_6g
+dropout_schedule='0,0@0.20,0.2@0.50,0'
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
@@ -142,6 +143,7 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
     --trainer.max-param-change 2.0 \
+    --trainer.dropout-schedule $dropout_schedule \
     --cleanup.remove-egs false \
     --feat-dir data/${train_set} \
     --tree-dir $tree_dir \
