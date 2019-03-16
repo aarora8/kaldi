@@ -28,7 +28,7 @@ unsup_egs_dir=  # Supply this to skip unsupervised egs creation
 unsup_egs_opts=  # Extra options to pass to unsupervised egs creation
 # Neural network opts
 xent_regularize=0.1
-tdnn_dim=550
+tdnn_dim=450
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -68,7 +68,7 @@ if [ $stage -le 4 ]; then
   steps/nnet3/decode_semisup.sh --num-threads 4 --nj 45 --cmd "$cmd" --beam 15 \
             --frames-per-chunk 340 \
             --acwt 1.0 --post-decode-acwt 10.0 --write-compact false \
-            --scoring-opts "--min-lmwt 8 --max-lmwt 8" --word-determinize false \
+            --scoring-opts "--min-lmwt 10 --max-lmwt 10" --word-determinize false \
             $graphdir data/$unsupervised_set $sup_chain_dir/decode_${unsupervised_set}
 fi
 
@@ -238,7 +238,6 @@ if [ $stage -le 15 ]; then
     --chain.left-tolerance 1 \
     --chain.right-tolerance 1 \
     --chain.xent-regularize $xent_regularize \
-    --trainer.srand=0 \
     --trainer.optimization.shrink-value=1.0 \
     --trainer.num-chunk-per-minibatch=32,16 \
     --trainer.optimization.momentum=0.0 \
