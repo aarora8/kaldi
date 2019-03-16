@@ -272,7 +272,7 @@ fi
 
 if [ $stage -le 18 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  for decode_set in test; do
+  for decode_set in test.5k; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
       --nj $nj --cmd "$cmd" \
       $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
