@@ -25,13 +25,12 @@ fi
 
 affix=_1a_${train_set}
 chain_model_dir=exp/chain/cnn_e2eali${affix}
-#ali_dir=exp/chain/e2eali_$train_set
+ali_dir=exp/chain/e2eali_$train_set
 lat_dir=exp/chain/chainali_${train_set}_lats
 dir=exp/chain/cnn_chainali${affix}
 train_data_dir=data/${train_set}
-#use end2endali tree
 tree_dir=exp/chain/tree_chainali_${train_set}
-tree_dir=exp/chain/tree_e2eali_${train_set}
+xent_regularize=0.1
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
 # you should probably name it differently.
@@ -74,42 +73,47 @@ if [ $stage -le 2 ]; then
   cp exp/chain/e2eali_${train_set}_lats/splice_opts $lat_dir/splice_opts
 fi
 
-#if [ $stage -le 3 ]; then
-#  # Build a tree using our new topology.  We know we have alignments for the
-#  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
-#  # those.  The num-leaves is always somewhat less than the num-leaves from
-#  # the GMM baseline.
-#   if [ -f $tree_dir/final.mdl ]; then
-#     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-#     exit 1;
-#  fi
-#  steps/nnet3/chain/build_tree.sh \
-#    --frame-subsampling-factor 4 \
-#    --alignment-subsampling-factor 1 \
-#    --context-opts "--context-width=2 --central-position=1" \
-#    --cmd "$cmd" $num_leaves $train_data_dir \
-#    $lang $ali_dir $tree_dir
-#fi
+if [ $stage -le 3 ]; then
+  # Build a tree using our new topology.  We know we have alignments for the
+  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
+  # those.  The num-leaves is always somewhat less than the num-leaves from
+  # the GMM baseline.
+   if [ -f $tree_dir/final.mdl ]; then
+     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+     exit 1;
+  fi
+  steps/nnet3/chain/build_tree.sh \
+    --frame-subsampling-factor 4 \
+    --alignment-subsampling-factor 1 \
+    --context-opts "--context-width=2 --central-position=1" \
+    --cmd "$cmd" $num_leaves $train_data_dir \
+    $lang $ali_dir $tree_dir
+fi
 
 if [ $stage -le 4 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
-  num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
-  common1="height-offsets=-2,-1,0,1,2 num-filters-out=36"
-  common2="height-offsets=-2,-1,0,1,2 num-filters-out=70"
+  num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
+  common2="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
+  common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
-  conv-relu-batchnorm-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
-  conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-layer name=cnn4 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
-  relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim
-  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim
-  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim
-  relu-batchnorm-layer name=tdnn4 input=Append(-4,0,4) dim=$tdnn_dim
-  ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $output_opts
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
+  conv-relu-batchnorm-dropout-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1 dropout-proportion=0.0
+  conv-relu-batchnorm-dropout-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2 dropout-proportion=0.0
+  conv-relu-batchnorm-dropout-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
+  conv-relu-batchnorm-dropout-layer name=cnn4 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
+  conv-relu-batchnorm-dropout-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
+  conv-relu-batchnorm-dropout-layer name=cnn6 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
+  conv-relu-batchnorm-dropout-layer name=cnn7 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
+  relu-batchnorm-dropout-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim dropout-proportion=0.0
+  relu-batchnorm-dropout-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim dropout-proportion=0.0
+  relu-batchnorm-dropout-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim dropout-proportion=0.0
+  relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5
+  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn3 dim=$tdnn_dim target-rms=0.5
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
 
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
@@ -125,6 +129,7 @@ if [ $stage -le 5 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights true \
     --egs.dir "$common_egs_dir" \
+    --chain.xent-regularize $xent_regularize \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 1 \
     --trainer.num-chunk-per-minibatch 16,8 \

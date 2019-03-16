@@ -153,7 +153,7 @@ train_set=train_sup
 # training flat-start system
 if [ $stage -le 8 ]; then
   echo "$0: Calling the flat-start chain recipe... $(date)."
-  local/chain/run_e2e_cnn_1a.sh --train-set train_sup
+  local/chain/run_flatstart_cnn_1a.sh --train-set train_sup
 fi
 
 # alignments are used in tree
@@ -161,24 +161,23 @@ if [ $stage -le 9 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/train_sup data/lang_e2e exp/chain/e2e_cnn_1a_$train_set exp/chain/flatstartali_$train_set
+                       data/train_sup data/lang exp/chain/flatstart_cnn_1a_$train_set exp/chain/flatstartali_$train_set
 fi
 
 # training e2eali system
 if [ $stage -le 10 ]; then
   echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_e2eali_1a.sh --train-set train_sup --stage 4
+  local/chain/run_cnn_e2eali_1a.sh --train-set train_sup
 fi
 
-# no need for alignments, use same tree from end2endali
 if [ $stage -le 11 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/train_sup data/lang_chain exp/chain/cnn_e2eali_1a_$train_set exp/chain/e2eali_$train_set
+                       data/train_sup data/lang exp/chain/cnn_e2eali_1a_$train_set exp/chain/e2eali_$train_set
 fi
 
-# training baseline system
+# training chainali baseline system (larger network)
 if [ $stage -le 12 ]; then
   echo "$0: chain model using the chainali alignments..."
   local/chain/run_cnn_chainali_1a.sh --stage 2 --train-set train_sup
@@ -199,7 +198,7 @@ if [ $stage -le 14 ]; then
     --unsupervised-set train_unsup_unique \
     --sup-chain-dir exp/chain/cnn_chainali_1a_$train_set \
     --sup-lat-dir exp/chain/chainali_${train_set}_lats \
-    --sup-tree-dir exp/chain/tree_e2eali_${train_set} \
+    --sup-tree-dir exp/chain/tree_chainali_${train_set} \
     --tdnn-affix _1a_tol1_beam4 \
     --exp-root exp/semisup.unsup40k || exit 1
 fi

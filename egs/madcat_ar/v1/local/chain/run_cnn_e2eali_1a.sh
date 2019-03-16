@@ -24,13 +24,13 @@ EOF
 fi
 
 affix=_1a_${train_set}
-e2echain_model_dir=exp/chain/e2e_cnn_1a_$train_set
+e2echain_model_dir=exp/chain/flatstart_cnn_1a_$train_set
 ali_dir=exp/chain/flatstartali_$train_set
 lat_dir=exp/chain/e2eali_${train_set}_lats
 dir=exp/chain/cnn_e2eali${affix}
 train_data_dir=data/${train_set}
 tree_dir=exp/chain/tree_e2eali_${train_set}
-
+xent_regularize=0.1
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
 # you should probably name it differently.
@@ -94,6 +94,7 @@ fi
 if [ $stage -le 4 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   common1="height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="height-offsets=-2,-1,0,1,2 num-filters-out=70"
   mkdir -p $dir/configs
@@ -110,6 +111,8 @@ if [ $stage -le 4 ]; then
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $output_opts
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
+  relu-batchnorm-layer name=prefinal-xent input=tdnn3 dim=$tdnn_dim target-rms=0.5
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
 
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
@@ -124,6 +127,7 @@ if [ $stage -le 5 ]; then
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights true \
+    --chain.xent-regularize $xent_regularize \
     --egs.dir "$common_egs_dir" \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 1 \

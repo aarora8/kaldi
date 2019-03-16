@@ -31,9 +31,9 @@ EOF
 fi
 
 affix=1a_$train_set
-lang=data/lang_e2e
-treedir=exp/chain/e2e_monotree  # it's actually just a trivial tree (no tree building)
-dir=exp/chain/e2e_cnn_${affix}
+lang=data/lang_flatstart
+treedir=exp/chain/flatstart_monotree  # it's actually just a trivial tree (no tree building)
+dir=exp/chain/flatstart_cnn_${affix}
 
 if [ $stage -le 0 ]; then
   # Create a version of the lang/ directory that has one state per phone in the

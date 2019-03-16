@@ -237,6 +237,7 @@ if [ $stage -le 15 ]; then
     --chain.alignment-subsampling-factor=1 \
     --chain.left-tolerance 1 \
     --chain.right-tolerance 1 \
+    --chain.xent-regularize $xent_regularize \
     --trainer.srand=0 \
     --trainer.optimization.shrink-value=1.0 \
     --trainer.num-chunk-per-minibatch=32,16 \

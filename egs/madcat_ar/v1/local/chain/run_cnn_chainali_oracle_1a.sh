@@ -30,9 +30,9 @@ chain_model_dir=exp/chain/cnn_chainali_1a_train_sup
 lat_dir=exp/chain/chainali_${train_set}_lats
 dir=exp/chain/cnn_chainali${affix}
 train_data_dir=data/${train_set}
-#use end2endali tree
+#use chainali tree
 tree_dir=exp/chain/tree_chainali_${train_set}
-tree_dir=exp/chain/tree_e2eali_train_sup
+tree_dir=exp/chain/tree_chainali_train_sup
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
 # you should probably name it differently.
@@ -159,6 +159,7 @@ if [ $stage -le 7 ]; then
     --egs.dir "$common_egs_dir" \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 1 \
+    --chain.xent-regularize $xent_regularize \
     --trainer.num-chunk-per-minibatch 32,16 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 4 \
