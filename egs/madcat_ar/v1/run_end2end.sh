@@ -118,31 +118,28 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0:Preparing supervised and unsupervised data..."
-  local/get_unique_utterances.py data/train/text.old > data/train/uttlist.full
-  head -40000 data/train/uttlist.full > data/train/uttlist.40k
-  utils/subset_data_dir.sh --utt-list data/train/uttlist.40k data/train data/train_unsup
-  tail +40000 data/train/uttlist.full > data/train/uttlist.tail.80k
-  utils/subset_data_dir.sh --utt-list data/train/uttlist.tail.80k data/train data/train_LM
+  #local/get_unique_utterances.py data/train/text.old > data/train/uttlist.full
+  #head -40000 data/train/uttlist.full > data/train/uttlist.40k
+  #utils/subset_data_dir.sh --utt-list data/train/uttlist.40k data/train data/train_unsup
+  #tail +40000 data/train/uttlist.full > data/train/uttlist.tail.80k
+  #utils/subset_data_dir.sh --utt-list data/train/uttlist.tail.80k data/train data/train_LM
+  #utils/subset_data_dir.sh data/test 5000 data/test_5k
 
-  utils/subset_data_dir.sh data/dev 4000 data/train_sup4k
-  local/get_unique_utterances.py data/train_sup4k/text.old > data/train_sup4k/uttlist
-  utils/subset_data_dir.sh --utt-list data/train_sup4k/uttlist data/train_sup4k data/train_sup
-
+  utils/subset_data_dir.sh data/dev 8000 data/train_sup8k
+  local/get_unique_utterances.py data/train_sup8k/text.old > data/train_sup8k/uttlist
+  utils/subset_data_dir.sh --utt-list data/train_sup8k/uttlist data/train_sup8k data/train_sup
   local/remove_sup_utts_from_unsup.py data/train_sup/text.old data/train_unsup/text.old > data/local/unsup_uttlist
   utils/subset_data_dir.sh --utt-list data/local/unsup_uttlist data/train_unsup data/train_unsup_unique
-
   cp data/train/allowed_lengths.txt data/train_unsup_unique/allowed_lengths.txt
   cp data/dev/allowed_lengths.txt data/train_sup/allowed_lengths.txt
-
-  utils/subset_data_dir.sh data/test 5000 data/test_5k
 fi
 
-if [ $stage -le 6 ]; then
-  echo "$0: Estimating a language model for decoding..."
-  local/train_lm.unsup.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.train80k.arpa.gz \
-                     data/local/dict/lexicon.txt data/lang_decode_unsup 
-fi
+#if [ $stage -le 6 ]; then
+#  echo "$0: Estimating a language model for decoding..."
+#  local/train_lm.unsup.sh
+#  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.train80k.arpa.gz \
+#                     data/local/dict/lexicon.txt data/lang_decode_unsup 
+#fi
 
 if [ $stage -le 7 ]; then
   utils/combine_data.sh data/semisup \
