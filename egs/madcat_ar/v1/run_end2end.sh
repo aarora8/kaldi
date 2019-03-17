@@ -180,16 +180,8 @@ if [ $stage -le 12 ]; then
   local/chain/run_cnn_chainali_1a.sh --stage 2 --train-set train_sup
 fi
 
-# training oracle system
-train_set=semisup
-if [ $stage -le 13 ]; then
-  echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_chainali_oracle_1a.sh --train-set semisup --stage 2
-fi
-
 # training semi-supervised system
-train_set=train_sup
-if [ $stage -le 14 ]; then
+if [ $stage -le 13 ]; then
   local/chain/run_cnn_chainali_semisupervised_1a.sh \
     --supervised-set train_sup \
     --unsupervised-set train_unsup_unique \
@@ -198,4 +190,11 @@ if [ $stage -le 14 ]; then
     --sup-tree-dir exp/chain/tree_chainali_${train_set} \
     --tdnn-affix _1a_tol1_beam4 \
     --exp-root exp/semisup || exit 1
+fi
+
+# training oracle system
+train_set=semisup
+if [ $stage -le 14 ]; then
+  echo "$(date) stage 5: Building a tree and training a regular chain model using the e2e alignments..."
+  local/chain/run_cnn_chainali_oracle_1a.sh --train-set semisup --stage 2
 fi
