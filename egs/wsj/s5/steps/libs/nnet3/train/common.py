@@ -7,7 +7,6 @@
 """This module contains classes and methods common to training of
 nnet3 neural networks.
 """
-from __future__ import division
 
 import argparse
 import glob
@@ -27,7 +26,6 @@ logger.addHandler(logging.NullHandler())
 
 class RunOpts(object):
     """A structure to store run options.
-
     Run options like queue.pl and run.pl, along with their memory
     and parallel training options for various types of commands such
     as the ones for training, parallel-training, running on GPU etc.
@@ -71,12 +69,9 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
         '--output=ark:foo/egs/output.3.ark --weight=ark:foo/egs/weights.3.ark'
         i.e. egs_prefix is "" for train and
         "valid_diagnostic." for validation.
-
-        Caution: archive_index is usually an integer, but may be a string ("JOB")
-        in some cases.
     """
     multitask_egs_opts = ""
-    egs_suffix = ".{0}".format(archive_index) if archive_index != -1 else ""
+    egs_suffix = ".{0}".format(archive_index) if archive_index > -1 else ""
 
     if use_multitask_egs:
         output_file_name = ("{egs_dir}/{egs_prefix}output{egs_suffix}.ark"
@@ -530,13 +525,13 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
                                          presoftmax_prior_scale_power=-0.25,
                                          smooth=0.01):
     total = sum(pdf_counts)
-    average_count = float(total) / len(pdf_counts)
+    average_count = total/len(pdf_counts)
     scales = []
     for i in range(len(pdf_counts)):
         scales.append(math.pow(pdf_counts[i] + smooth * average_count,
                                presoftmax_prior_scale_power))
     num_pdfs = len(pdf_counts)
-    scaled_counts = [x * float(num_pdfs) / sum(scales) for x in scales]
+    scaled_counts = list(map(lambda x: x * float(num_pdfs) / sum(scales), scales))
     return scaled_counts
 
 
@@ -566,7 +561,7 @@ def get_model_combine_iters(num_iters, num_epochs,
         in the final model-averaging phase.  (note: it's a weighted average
         where the weights are worked out from a subset of training data.)"""
 
-    approx_iters_per_epoch_final = float(num_archives) / num_jobs_final
+    approx_iters_per_epoch_final = num_archives/num_jobs_final
     # Note: it used to be that we would combine over an entire epoch,
     # but in practice we very rarely would use any weights from towards
     # the end of that range, so we are changing it to use not
@@ -583,13 +578,8 @@ def get_model_combine_iters(num_iters, num_epochs,
     # But if this value is > max_models_combine, then the models
     # are subsampled to get these many models to combine.
 
-<<<<<<< HEAD
-    num_iters_combine_initial = min(int(approx_iters_per_epoch_final/2) + 1,
-                                    int(num_iters/2))
-=======
     num_iters_combine_initial = int(min(approx_iters_per_epoch_final/2 + 1,
                                     num_iters/2))
->>>>>>> 6bf8fb4bcd81a9eccc80e7dcd7b1ca438f090fb6
 
     if num_iters_combine_initial > max_models_combine:
         subsample_model_factor = int(
@@ -617,7 +607,8 @@ def get_learning_rate(iter, num_jobs, num_iters, num_archives_processed,
         effective_learning_rate = (
                 initial_effective_lrate
                 * math.exp(num_archives_processed
-                           * math.log(float(final_effective_lrate) / initial_effective_lrate)
+                           * math.log(final_effective_lrate
+                                      / initial_effective_lrate)
                            / num_archives_to_process))
 
     return num_jobs * effective_learning_rate
@@ -699,7 +690,6 @@ def self_test():
 
 class CommonParser(object):
     """Parser for parsing common options related to nnet3 training.
-
     This argument parser adds common options related to nnet3 training
     such as egs creation, training optimization options.
     These are used in the nnet3 train scripts
@@ -894,7 +884,7 @@ class CommonParser(object):
                                  start and 1 is the end of training; the
                                  function-argument (x) rises linearly with the
                                  amount of data you have seen, not iteration
-                                 number (this improves invariance to
+                               number (this improves invariance to
                                  num-jobs-{initial-final}).  E.g. '0,0.2,0'
                                  means 0 at the start; 0.2 after seeing half
                                  the data; and 0 at the end.  You may specify
@@ -952,7 +942,7 @@ class CommonParser(object):
                                  e.g. queue.pl for launching on SGE cluster
                                         run.pl for launching on local machine
                                  """, default="queue.pl")
-        self.parser.add_argument("--egs.cmd", type=str, dest="egs_command",
+        self.parser.add_argument("--egs.", type=str, dest="egs_command",
                                  action=common_lib.NullstrToNoneAction,
                                  help="Script to launch egs jobs")
         self.parser.add_argument("--combine-queue-opt", type=str, dest='combine_queue_opt',
