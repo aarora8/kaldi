@@ -204,18 +204,16 @@ if [ -z "$unsup_egs_dir" ]; then
 
     echo "$0: generating egs from the unsupervised data"
     $get_egs_script \
-      --cmd "$decode_cmd" --alignment-subsampling-factor 1 \
+      --cmd "$cmd" --alignment-subsampling-factor 1 \
       --left-tolerance $tolerance --right-tolerance $tolerance \
       --left-context $egs_left_context --right-context $egs_right_context \
-      --left-context-initial $egs_left_context_initial --right-context-final $egs_right_context_final \
       --frames-per-eg $unsup_frames_per_eg --frames-per-iter 1500000 \
       --frame-subsampling-factor $frame_subsampling_factor \
       --cmvn-opts "$cmvn_opts" --lattice-lm-scale $lattice_lm_scale \
       --lattice-prune-beam "$lattice_prune_beam" --extra-supervision-opts "$extra_supervision_opts" \
-      --deriv-weights-scp $sup_chain_dir/best_path_${unsupervised_set_perturbed}/weights.scp \
-      --online-ivector-dir $ivector_root_dir/ivectors_${unsupervised_set_perturbed}_hires \
+      --deriv-weights-scp $sup_chain_dir/best_path_$unsupervised_set/weights.scp \
       --generate-egs-scp true $unsup_egs_opts \
-      data/${unsupervised_set_perturbed}_hires $dir \
+      data/$unsupervised_set $dir \
       $unsup_lat_dir $unsup_egs_dir
   fi
 fi
