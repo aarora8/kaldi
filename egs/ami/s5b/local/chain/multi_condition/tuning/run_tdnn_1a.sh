@@ -1,5 +1,6 @@
 #!/bin/bash
 
+<<<<<<< HEAD
 # This script is based on swbd 7q TDNN-F recipe 
 # with resnet-style skip connections, more layers,
 # skinnier bottlenecks, removing the 3-way splicing and skip-layer splicing,
@@ -24,6 +25,32 @@
 # Final valid prob      -0.161014 -0.156612
 # Final train prob (xent)       -1.9774  -1.57504
 # Final valid prob (xent)      -2.09991    -1.705
+=======
+# 7q is as 7p but a modified topology with resnet-style skip connections, more layers,
+#  skinnier bottlenecks, removing the 3-way splicing and skip-layer splicing,
+#  and re-tuning the learning rate and l2 regularize.  The configs are
+#  standardized and substantially simplified.  There isn't any advantage in WER
+#  on this setup; the advantage of this style of config is that it also works
+#  well on smaller datasets, and we adopt this style here also for consistency.
+
+# local/chain/compare_wer_general.sh --rt03 tdnn7p_sp tdnn7q_sp
+# System                tdnn7p_sp tdnn7q_sp
+# WER on train_dev(tg)      11.80     11.79
+# WER on train_dev(fg)      10.77     10.84
+# WER on eval2000(tg)        14.4      14.3
+# WER on eval2000(fg)        13.0      12.9
+# WER on rt03(tg)            17.5      17.6
+# WER on rt03(fg)            15.3      15.2
+# Final train prob         -0.057    -0.058
+# Final valid prob         -0.069    -0.073
+# Final train prob (xent)        -0.886    -0.894
+# Final valid prob (xent)       -0.9005   -0.9106
+# Num-parameters               22865188  18702628
+
+
+# steps/info/chain_dir_info.pl exp/chain/tdnn7q_sp
+# exp/chain/tdnn7q_sp: num-iters=394 nj=3..16 num-params=18.7M dim=40+100->6034 combine=-0.058->-0.057 (over 8) xent:train/valid[261,393,final]=(-1.20,-0.897,-0.894/-1.20,-0.919,-0.911) logprob:train/valid[261,393,final]=(-0.090,-0.059,-0.058/-0.098,-0.073,-0.073)
+>>>>>>> 6bf8fb4bcd81a9eccc80e7dcd7b1ca438f090fb6
 
 set -e -o pipefail
 
@@ -220,7 +247,11 @@ if [ $stage -le 15 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
+<<<<<<< HEAD
   learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
+=======
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+>>>>>>> 6bf8fb4bcd81a9eccc80e7dcd7b1ca438f090fb6
   affine_opts="l2-regularize=0.01 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
   tdnnf_opts="l2-regularize=0.01 dropout-proportion=0.0 bypass-scale=0.66"
   linear_opts="l2-regularize=0.01 orthonormal-constraint=-1.0"

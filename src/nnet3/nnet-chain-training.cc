@@ -25,10 +25,11 @@ namespace kaldi {
 namespace nnet3 {
 
 NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
-                                   const fst::StdVectorFst &den_fst,
+                                   const std::vector<fst::StdVectorFst> &den_fsts,
+                                   const std::vector<std::vector<std::string> > &den_fst_to_outputs,
                                    Nnet *nnet):
     opts_(opts),
-    den_graph_(den_fst, nnet->OutputDim("output")),
+    den_graphs_(den_fsts, den_fst_to_outputs, *nnet),
     nnet_(nnet),
     compiler_(*nnet, opts_.nnet_config.optimize_config,
               opts_.nnet_config.compiler_config),
@@ -227,7 +228,7 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
 
     BaseFloat tot_objf, tot_l2_term, tot_weight;
 
-    ComputeChainObjfAndDeriv(opts_.chain_config, den_graph_,
+    ComputeChainObjfAndDeriv(opts_.chain_config, den_graphs_.Get(sup.name),
                              sup.supervision, nnet_output,
                              &tot_objf, &tot_l2_term, &tot_weight,
                              &nnet_output_deriv,
@@ -253,15 +254,26 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
         xent_deriv.MulRowsVec(cu_deriv_weights);
     }
 
-    computer->AcceptInput(sup.name, &nnet_output_deriv);
-
     objf_info_[sup.name + suffix].UpdateStats(sup.name + suffix,
                                      opts_.nnet_config.print_interval,
                                      num_minibatches_processed_,
                                      tot_weight, tot_objf, tot_l2_term);
+    if (opts_.accumulate_avg_deriv) {
+        if (objf_info_[sup.name + suffix].deriv_sum.Dim() == 0)
+          objf_info_[sup.name + suffix].deriv_sum.Resize(nnet_output.NumCols());
+        objf_info_[sup.name + suffix].deriv_sum.AddRowSumMat(
+            1.0, nnet_output_deriv, 1.0);
+    }
+    computer->AcceptInput(sup.name, &nnet_output_deriv);
 
     if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);
+      if (opts_.accumulate_avg_deriv) {
+          if (objf_info_[xent_name + suffix].deriv_sum.Dim() == 0)
+            objf_info_[xent_name + suffix].deriv_sum.Resize(nnet_output.NumCols());
+          objf_info_[xent_name + suffix].deriv_sum.AddRowSumMat(
+              1.0, xent_deriv, 1.0);
+      }
       computer->AcceptInput(xent_name, &xent_deriv);
     }
   }

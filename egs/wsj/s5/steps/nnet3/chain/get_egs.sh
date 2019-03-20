@@ -73,9 +73,11 @@ lattice_lm_scale=     # If supplied, the graph/lm weight of the lattices will be
                       # 0.5 for unsupervised data.
 lattice_prune_beam=         # If supplied, the lattices will be pruned to this beam,
                             # before being used to get supervisions.
+use_best_path_words=false
 acwt=0.1   # For pruning
 deriv_weights_scp=
 generate_egs_scp=false
+no_chunking=false
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -132,6 +134,8 @@ dir=$4
 [ ! -z "$online_ivector_dir" ] && \
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 
+$no_chunking && extra_files="$extra_files $data/allowed_lengths.txt"
+
 for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl \
          $chaindir/{0.trans_mdl,tree,normalization.fst} $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
@@ -151,8 +155,17 @@ mkdir -p $dir/log $dir/info
 # Get list of validation utterances.
 frame_shift=$(utils/data/get_frame_shift.sh $data) || exit 1
 
+if $no_chunking; then
+  frames_per_eg=$(cat $data/allowed_lengths.txt | tr '\n' , | sed 's/,$//')
+else
+  if [ -z "$frames_per_eg" ]; then
+    echo "$0: --frames-per-eg is expected if --no-chunking is false"
+    exit 1
+  fi
+fi
+
 awk '{print $1}' $data/utt2spk | \
-  utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/valid_uttlist
+  utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
 
 len_uttlist=$(wc -l < $dir/valid_uttlist)
 if [ $len_uttlist -lt $num_utts_subset ]; then
@@ -267,6 +280,7 @@ fi
 egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 [ $left_context_initial -ge 0 ] && egs_opts="$egs_opts --left-context-initial=$left_context_initial"
 [ $right_context_final -ge 0 ] && egs_opts="$egs_opts --right-context-final=$right_context_final"
+$no_chunking && egs_opts="$egs_opts --no-chunking"
 
 [ ! -z "$deriv_weights_scp" ] && egs_opts="$egs_opts --deriv-weights-rspecifier=scp:$deriv_weights_scp"
 
@@ -286,6 +300,10 @@ fi
 
 
 lats_rspecifier="ark:gunzip -c $latdir/lat.JOB.gz |"
+if $use_best_path_words; then
+  lats_rspecifier="ark:lattice-compose \"$lats_rspecifier\" \"$lats_rspecifier lattice-1best --acoustic-scale=$acwt ark:- ark:- | lattice-scale --acoustic-scale=0.0 --lm-scale=0.0 ark:- ark:- | lattice-project ark:- ark:- |\" ark:- |"
+fi
+
 if [ ! -z $lattice_prune_beam ]; then
   if [ "$lattice_prune_beam" == "0" ] || [ "$lattice_prune_beam" == "0.0" ]; then
     lats_rspecifier="$lats_rspecifier lattice-1best --acoustic-scale=$acwt ark:- ark:- |"
@@ -354,22 +372,23 @@ if [ $stage -le 2 ]; then
     fi
     $cmd $dir/log/create_valid_subset_combine.log \
       nnet3-chain-subset-egs --n=$num_valid_egs_combine ark:$dir/valid_all.cegs \
-      ark:$dir/valid_combine.cegs || exit 1
+      ark:$dir/valid_combine.cegs || exit 1 &
     $cmd $dir/log/create_valid_subset_diagnostic.log \
       nnet3-chain-subset-egs --n=$num_egs_diagnostic ark:$dir/valid_all.cegs \
-      $valid_diagnostic_output || exit 1
+      $valid_diagnostic_output || exit 1 &
 
     $cmd $dir/log/create_train_subset_combine.log \
       nnet3-chain-subset-egs --n=$num_train_egs_combine ark:$dir/train_subset_all.cegs \
-      ark:$dir/train_combine.cegs || exit 1
+      ark:$dir/train_combine.cegs || exit 1 &
     $cmd $dir/log/create_train_subset_diagnostic.log \
       nnet3-chain-subset-egs --n=$num_egs_diagnostic ark:$dir/train_subset_all.cegs \
-      $train_diagnostic_output || exit 1
+      $train_diagnostic_output || exit 1 &
     wait
     sleep 5  # wait for file system to sync.
     if $generate_egs_scp; then
       cat $dir/valid_combine.cegs $dir/train_combine.cegs | \
         nnet3-chain-copy-egs ark:- ark,scp:$dir/combine.cegs,$dir/combine.scp
+      rm $dir/{train,valid}_combine.scp
     else
       cat $dir/valid_combine.cegs $dir/train_combine.cegs > $dir/combine.cegs
     fi
@@ -486,6 +505,10 @@ fi
 wait
 if [ -f $dir/.error ]; then
   echo "Error detected while creating train/valid egs" && exit 1
+fi
+
+if [ $chaindir != $dir ]; then
+  cp $chaindir/{0.trans_mdl,tree,den.fst,normalization.fst} $dir
 fi
 
 if [ $stage -le 6 ]; then
