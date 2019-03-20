@@ -57,13 +57,9 @@ if [ $stage -le 0 ]; then
   # use the validation data as the dev set.
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
-
   cat data/dev/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
 
-  # use the training data as an additional data source.
-  # we can later fold the dev data into this.
-  cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/train.txt
-
+  cat data/train_LM/text | cut -d " " -f 2-  > ${dir}/data/text/train.txt
   # for reporting perplexities, we'll use the "real" dev set.
   # (the validation data is used as ${dir}/data/text/dev.txt to work
   # out interpolation weights.)
@@ -98,16 +94,5 @@ if [ $stage -le 1 ]; then
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
   mkdir -p ${dir}/data/arpa
-  format_arpa_lm.py ${unpruned_lm_dir} | gzip -c > ${dir}/data/arpa/${order}gram_unpruned.arpa.gz
-fi
-
-if [ $stage -le 2 ]; then
-  echo "$0: pruning the LM (to larger size)"
-  # Using 1 million n-grams for a big LM for rescoring purposes.
-  size=1000000
-  prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
-
-  get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
-  mkdir -p ${dir}/data/arpa
-  format_arpa_lm.py ${dir}/data/lm_${order}_prune_big | gzip -c > ${dir}/data/arpa/${order}gram_big.arpa.gz
+  format_arpa_lm.py ${unpruned_lm_dir} | gzip -c > ${dir}/data/arpa/${order}gram_unpruned.train80k.arpa.gz
 fi
