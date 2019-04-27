@@ -25,7 +25,7 @@ EOF
 fi
 
 affix=_1a_${train_set}
-chain_model_dir=exp/chain/cnn_chainali${affix}
+chain_model_dir=exp/chain/cnn_e2eali${affix}
 ali_dir=exp/chain/e2eali_$train_set
 lat_dir=exp/chain/chainali_${train_set}_lats
 dir=exp/chain/cnn_chainali${affix}
