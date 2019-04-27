@@ -149,7 +149,7 @@ if [ -z "$sup_egs_dir" ]; then
   if [ $stage -le 12 ]; then
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $sup_egs_dir/storage ]; then
       utils/create_split_dir.pl \
-       /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$sup_egs_dir/storage $sup_egs_dir/storage
+       /export/b0{5,6,7}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$sup_egs_dir/storage $sup_egs_dir/storage
     fi
     mkdir -p $sup_egs_dir/
     touch $sup_egs_dir/.nodelete # keep egs around when that run dies.
@@ -179,7 +179,7 @@ lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattice
                       # creating numerator supervision
 lattice_prune_beam=4.0  # beam for pruning the lattices prior to getting egs
                         # for unsupervised data
-tolerance=1   # frame-tolerance for chain training
+tolerance=2   # frame-tolerance for chain training
 
 unsup_lat_dir=$sup_chain_dir/decode_$unsupervised_set
 if [ -z "$unsup_egs_dir" ]; then
@@ -188,7 +188,7 @@ if [ -z "$unsup_egs_dir" ]; then
   if [ $stage -le 13 ]; then
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $unsup_egs_dir/storage ]; then
       utils/create_split_dir.pl \
-       /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$unsup_egs_dir/storage $unsup_egs_dir/storage
+       /export/b0{5,6,7}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$unsup_egs_dir/storage $unsup_egs_dir/storage
     fi
     mkdir -p $unsup_egs_dir
     touch $unsup_egs_dir/.nodelete # keep egs around when that run dies.
