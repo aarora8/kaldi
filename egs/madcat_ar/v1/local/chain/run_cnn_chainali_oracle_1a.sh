@@ -157,9 +157,9 @@ if [ $stage -le 7 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights true \
     --egs.dir "$common_egs_dir" \
+    --chain.xent-regularize $xent_regularize \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 1 \
-    --chain.xent-regularize $xent_regularize \
     --trainer.num-chunk-per-minibatch 32,16 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 4 \
