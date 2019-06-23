@@ -58,13 +58,13 @@ suffix=
 $speed_perturb && suffix=_sp
 dir=exp/chain/tdnn${affix}${suffix}
 
-if ! cuda-compiled; then
-  cat <<EOF && exit 1
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
-If you want to use GPUs (and have them), go to src/, and configure and make on a machine
-where "nvcc" is installed.
-EOF
-fi
+#if ! cuda-compiled; then
+#  cat <<EOF && exit 1
+#This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
+#If you want to use GPUs (and have them), go to src/, and configure and make on a machine
+#where "nvcc" is installed.
+#EOF
+#fi
 
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
