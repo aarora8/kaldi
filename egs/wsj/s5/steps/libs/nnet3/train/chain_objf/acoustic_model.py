@@ -127,6 +127,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
                      frame_subsampling_factor, run_opts, train_opts,
+                     if_fmask_opts, F_opts,
                      backstitch_training_scale=0.0, backstitch_training_interval=1,
                      use_multitask_egs=False):
     """
@@ -172,6 +173,16 @@ def train_new_models(dir, iter, srand, num_jobs,
         frame_shift = ((archive_index + k//num_archives)
                        % frame_subsampling_factor)
 
+
+        if if_fmask_opts:
+            image_augmentation_cmd = (
+                'nnet3-augment-image --srand={srand} --fmask={if_fmask_opts} --F={F_opts} ark:- ark:- |'.format(
+                    srand=k+srand,
+                    if_fmask_opts=if_fmask_opts,
+                    F_opts=F_opts))
+        else:
+            image_augmentation_cmd = ''
+
         multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
             egs_dir,
             egs_prefix="cegs.",
@@ -202,7 +213,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         --frame-shift={fr_shft} \
                         {scp_or_ark}:{egs_dir}/cegs.{archive_index}.{scp_or_ark} ark:- | \
                         nnet3-chain-shuffle-egs --buffer-size={buf_size} \
-                        --srand={srand} ark:- ark:- | nnet3-chain-merge-egs \
+                        --srand={srand} ark:- ark:- | {aug_cmd} nnet3-chain-merge-egs \
                         --minibatch-size={num_chunk_per_mb} ark:- ark:- |" \
                     {dir}/{next_iter}.{job}.raw""".format(
                         command=run_opts.command,
@@ -224,6 +235,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         raw_model=raw_model_string,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,
+                        aug_cmd=image_augmentation_cmd,
                         num_chunk_per_mb=num_chunk_per_minibatch_str,
                         multitask_egs_opts=multitask_egs_opts,
                         scp_or_ark=scp_or_ark),
@@ -246,6 +258,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor,
                         run_opts, dropout_edit_string="", train_opts="",
+                        if_fmask_opts=False, F_opts=27,
                         backstitch_training_scale=0.0, backstitch_training_interval=1,
                         use_multitask_egs=False):
     """ Called from steps/nnet3/chain/train.py for one iteration for
@@ -321,6 +334,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
                      run_opts=run_opts, train_opts=train_opts,
+                     if_fmask_opts=if_fmask_opts, F_opts=F_opts,
                      # linearly increase backstitch_training_scale during the
                      # first few iterations (hard-coded as 15)
                      backstitch_training_scale=(backstitch_training_scale *

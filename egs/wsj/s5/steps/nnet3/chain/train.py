@@ -62,6 +62,14 @@ def get_args():
                         is the 'principal' chunk-width, used preferentially""")
 
     # chain options
+    parser.add_argument("--chain.if_fmask_opts", type=str,
+                        dest='if_fmask_opts', default=False,
+                        action=common_lib.StrToBoolAction,
+                        choices=["true", "false"],
+                        help="")
+    parser.add_argument("--chain.F_opts", type=int,
+                        dest='F_opts', default=27,
+                        help="number of frequency bins to mask ")
     parser.add_argument("--chain.lm-opts", type=str, dest='lm_opts',
                         default=None, action=common_lib.NullstrToNoneAction,
                         help="options to be be passed to chain-est-phone-lm")
@@ -358,13 +366,6 @@ def train(args, run_opts):
                                right_context_final >= 0 else -1)
 
     default_egs_dir = '{0}/egs'.format(args.dir)
-
-    if (args.egs_dir is not None) and (args.cmvn_opts != "--norm-means=false --norm-vars=false"):
-        logger.warning("the --feat.cmvn-opts option has no effect because we are not dumping egs")
-
-    if (args.egs_dir is not None) and (args.frames_per_iter != 800000):
-        logger.warning("the --trainer.frames-per-iter option has no effect because we are not dumping egs")
-
     if ((args.stage <= -3) and args.egs_dir is None):
         logger.info("Generating egs")
         if (not os.path.exists("{0}/den.fst".format(args.dir)) or
@@ -545,6 +546,7 @@ def train(args, run_opts):
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 frame_subsampling_factor=args.frame_subsampling_factor,
                 run_opts=run_opts,
+                if_fmask_opts=args.if_fmask_opts, F_opts=args.F_opts,
                 backstitch_training_scale=args.backstitch_training_scale,
                 backstitch_training_interval=args.backstitch_training_interval,
                 use_multitask_egs=use_multitask_egs)

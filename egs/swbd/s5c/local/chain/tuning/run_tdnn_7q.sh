@@ -181,6 +181,8 @@ if [ $stage -le 13 ]; then
     --chain.l2-regularize 0.0 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
+    --chain.F_opts 27 \
+    --chain.if_fmask_opts true \
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --egs.dir "$common_egs_dir" \
