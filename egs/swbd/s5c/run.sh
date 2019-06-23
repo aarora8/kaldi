@@ -203,3 +203,9 @@ if [ $stage -le 14 ]; then
   steps/train_sat.sh  --cmd "$train_cmd" \
                       11500 200000 data/train_nodup data/lang exp/tri3_ali_nodup exp/tri4
 fi
+
+if [ $stage -le 15 ]; then
+
+  local/chain/run_tdnn.sh
+
+fi

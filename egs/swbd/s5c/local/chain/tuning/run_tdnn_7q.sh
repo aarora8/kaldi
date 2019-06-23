@@ -189,7 +189,7 @@ if [ $stage -le 13 ]; then
     --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs 30 \
+    --trainer.num-epochs 10 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.00025 \
