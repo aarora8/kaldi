@@ -165,11 +165,8 @@ fi
 if [ $stage -le 13 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b{11,12,13,14}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b{03,04,09,02}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
-
-#    --cmd "queue.pl --config /home/dpovey/queue_conly.conf" \
-
 
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$train_cmd" \
