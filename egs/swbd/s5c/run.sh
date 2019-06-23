@@ -103,7 +103,7 @@ if [ $stage -le 7 ]; then
   if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
   mfccdir=mfcc
   for x in train eval2000 $maybe_rt03; do
-    steps/make_mfcc.sh --nj 50 --cmd "$train_cmd" \
+    steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" \
                        data/$x exp/make_mfcc/$x $mfccdir
     steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
     utils/fix_data_dir.sh data/$x
@@ -137,68 +137,41 @@ fi
 
 if [ $stage -le 9 ]; then
   ## Starting basic training on MFCC features
-  steps/train_mono.sh --nj 30 --cmd "$train_cmd" \
+  steps/train_mono.sh --nj 20 --cmd "$train_cmd" \
                       data/train_30kshort data/lang_nosp exp/mono
 fi
 
 if [ $stage -le 10 ]; then
-  steps/align_si.sh --nj 30 --cmd "$train_cmd" \
+  steps/align_si.sh --nj 20 --cmd "$train_cmd" \
                     data/train_100k_nodup data/lang_nosp exp/mono exp/mono_ali
 
   steps/train_deltas.sh --cmd "$train_cmd" \
                         3200 30000 data/train_100k_nodup data/lang_nosp exp/mono_ali exp/tri1
 
-  (
-    graph_dir=exp/tri1/graph_nosp_sw1_tg
-    $train_cmd $graph_dir/mkgraph.log \
-               utils/mkgraph.sh data/lang_nosp_sw1_tg exp/tri1 $graph_dir
-    steps/decode_si.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-                       $graph_dir data/eval2000 exp/tri1/decode_eval2000_nosp_sw1_tg
-  ) &
 fi
 
 
 if [ $stage -le 11 ]; then
-  steps/align_si.sh --nj 30 --cmd "$train_cmd" \
+  steps/align_si.sh --nj 20 --cmd "$train_cmd" \
                     data/train_100k_nodup data/lang_nosp exp/tri1 exp/tri1_ali
 
   steps/train_deltas.sh --cmd "$train_cmd" \
                         4000 70000 data/train_100k_nodup data/lang_nosp exp/tri1_ali exp/tri2
-
-  (
-    # The previous mkgraph might be writing to this file.  If the previous mkgraph
-    # is not running, you can remove this loop and this mkgraph will create it.
-    while [ ! -s data/lang_nosp_sw1_tg/tmp/CLG_3_1.fst ]; do sleep 60; done
-    sleep 20; # in case still writing.
-    graph_dir=exp/tri2/graph_nosp_sw1_tg
-    $train_cmd $graph_dir/mkgraph.log \
-               utils/mkgraph.sh data/lang_nosp_sw1_tg exp/tri2 $graph_dir
-    steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-                    $graph_dir data/eval2000 exp/tri2/decode_eval2000_nosp_sw1_tg
-  ) &
 fi
 
 if [ $stage -le 12 ]; then
   # The 100k_nodup data is used in the nnet2 recipe.
-  steps/align_si.sh --nj 30 --cmd "$train_cmd" \
+  steps/align_si.sh --nj 20 --cmd "$train_cmd" \
                     data/train_100k_nodup data/lang_nosp exp/tri2 exp/tri2_ali_100k_nodup
 
   # From now, we start using all of the data (except some duplicates of common
   # utterances, which don't really contribute much).
-  steps/align_si.sh --nj 30 --cmd "$train_cmd" \
+  steps/align_si.sh --nj 20 --cmd "$train_cmd" \
                     data/train_nodup data/lang_nosp exp/tri2 exp/tri2_ali_nodup
 
   # Do another iteration of LDA+MLLT training, on all the data.
   steps/train_lda_mllt.sh --cmd "$train_cmd" \
                           6000 140000 data/train_nodup data/lang_nosp exp/tri2_ali_nodup exp/tri3
-
-  (
-    graph_dir=exp/tri3/graph_nosp_sw1_tg
-    $train_cmd $graph_dir/mkgraph.log \
-               utils/mkgraph.sh data/lang_nosp_sw1_tg exp/tri3 $graph_dir
-    steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-                    $graph_dir data/eval2000 exp/tri3/decode_eval2000_nosp_sw1_tg
-  ) &
 fi
 
 
@@ -219,142 +192,14 @@ if [ $stage -le 13 ]; then
   if $has_fisher; then
     utils/build_const_arpa_lm.sh $LM data/lang data/lang_sw1_fsh_fg
   fi
-
-  (
-    graph_dir=exp/tri3/graph_sw1_tg
-    $train_cmd $graph_dir/mkgraph.log \
-               utils/mkgraph.sh data/lang_sw1_tg exp/tri3 $graph_dir
-    steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-                    $graph_dir data/eval2000 exp/tri3/decode_eval2000_sw1_tg
-  ) &
 fi
 
 if [ $stage -le 14 ]; then
   # Train tri4, which is LDA+MLLT+SAT, on all the (nodup) data.
-  steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
+  steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
                        data/train_nodup data/lang exp/tri3 exp/tri3_ali_nodup
 
 
   steps/train_sat.sh  --cmd "$train_cmd" \
                       11500 200000 data/train_nodup data/lang exp/tri3_ali_nodup exp/tri4
-
-  (
-    graph_dir=exp/tri4/graph_sw1_tg
-    $train_cmd $graph_dir/mkgraph.log \
-               utils/mkgraph.sh data/lang_sw1_tg exp/tri4 $graph_dir
-    steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" \
-                          --config conf/decode.config \
-                          $graph_dir data/eval2000 exp/tri4/decode_eval2000_sw1_tg
-    # Will be used for confidence calibration example,
-    steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" \
-                          $graph_dir data/train_dev exp/tri4/decode_dev_sw1_tg
-    if $has_fisher; then
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_sw1_{tg,fsh_fg} data/eval2000 \
-        exp/tri4/decode_eval2000_sw1_{tg,fsh_fg}
-    fi
-  ) &
 fi
-
-if ! $train_discriminative; then
-  echo "$0: exiting early since --train-discriminative is false."
-  exit 0
-fi
-
-if [ $stage -le 15 ]; then
-  # MMI training starting from the LDA+MLLT+SAT systems on all the (nodup) data.
-  steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
-                       data/train_nodup data/lang exp/tri4 exp/tri4_ali_nodup
-
-  steps/make_denlats.sh --nj 50 --cmd "$decode_cmd" \
-                        --config conf/decode.config --transform-dir exp/tri4_ali_nodup \
-                        data/train_nodup data/lang exp/tri4 exp/tri4_denlats_nodup
-
-  # 4 iterations of MMI seems to work well overall. The number of iterations is
-  # used as an explicit argument even though train_mmi.sh will use 4 iterations by
-  # default.
-  num_mmi_iters=4
-  steps/train_mmi.sh --cmd "$decode_cmd" \
-                     --boost 0.1 --num-iters $num_mmi_iters \
-                     data/train_nodup data/lang exp/tri4_{ali,denlats}_nodup exp/tri4_mmi_b0.1
-
-  for iter in 1 2 3 4; do
-    (
-      graph_dir=exp/tri4/graph_sw1_tg
-      decode_dir=exp/tri4_mmi_b0.1/decode_eval2000_${iter}.mdl_sw1_tg
-      steps/decode.sh --nj 30 --cmd "$decode_cmd" \
-                      --config conf/decode.config --iter $iter \
-                      --transform-dir exp/tri4/decode_eval2000_sw1_tg \
-                      $graph_dir data/eval2000 $decode_dir
-      if $has_fisher; then
-        steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-          data/lang_sw1_{tg,fsh_fg} data/eval2000 \
-          exp/tri4_mmi_b0.1/decode_eval2000_${iter}.mdl_sw1_{tg,fsh_fg}
-      fi
-    ) &
-  done
-fi
-
-
-if [ $stage -le 16 ]; then
-  # Now do fMMI+MMI training
-  steps/train_diag_ubm.sh --silence-weight 0.5 --nj 50 --cmd "$train_cmd" \
-                          700 data/train_nodup data/lang exp/tri4_ali_nodup exp/tri4_dubm
-
-  steps/train_mmi_fmmi.sh --learning-rate 0.005 \
-                          --boost 0.1 --cmd "$train_cmd" \
-                          data/train_nodup data/lang exp/tri4_ali_nodup exp/tri4_dubm \
-                          exp/tri4_denlats_nodup exp/tri4_fmmi_b0.1
-
-  for iter in 4 5 6 7 8; do
-    (
-      graph_dir=exp/tri4/graph_sw1_tg
-      decode_dir=exp/tri4_fmmi_b0.1/decode_eval2000_it${iter}_sw1_tg
-      steps/decode_fmmi.sh --nj 30 --cmd "$decode_cmd" --iter $iter \
-                           --transform-dir exp/tri4/decode_eval2000_sw1_tg \
-                           --config conf/decode.config $graph_dir data/eval2000 $decode_dir
-      if $has_fisher; then
-        steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-          data/lang_sw1_{tg,fsh_fg} data/eval2000 \
-          exp/tri4_fmmi_b0.1/decode_eval2000_it${iter}_sw1_{tg,fsh_fg}
-      fi
-    ) &
-  done
-fi
-
-# this will help find issues with the lexicon.
-# steps/cleanup/debug_lexicon.sh --nj 300 --cmd "$train_cmd" data/train_nodev data/lang exp/tri4 data/local/dict/lexicon.txt exp/debug_lexicon
-
-# SGMM system.
-# local/run_sgmm2.sh $has_fisher
-
-# Karel's DNN recipe on top of fMLLR features
-# local/nnet/run_dnn.sh --has-fisher $has_fisher
-
-# Dan's nnet recipe
-# local/nnet2/run_nnet2.sh --has-fisher $has_fisher
-
-# Dan's nnet recipe with online decoding.
-# local/online/run_nnet2_ms.sh --has-fisher $has_fisher
-
-# demonstration script for resegmentation.
-# local/run_resegment.sh
-
-# demonstration script for raw-fMLLR.  You should probably ignore this.
-# local/run_raw_fmllr.sh
-
-# nnet3 LSTM recipe
-# local/nnet3/run_lstm.sh
-
-# nnet3 BLSTM recipe
-# local/nnet3/run_lstm.sh --affix bidirectional \
-#                         --lstm-delay " [-1,1] [-2,2] [-3,3] " \
-#                         --label-delay 0 \
-#                         --cell-dim 1024 \
-#                         --recurrent-projection-dim 128 \
-#                         --non-recurrent-projection-dim 128 \
-#                         --chunk-left-context 40 \
-#                         --chunk-right-context 40
-
-# getting results (see RESULTS file)
-# for x in 1 2 3a 3b 4a; do grep 'Percent Total Error' exp/tri$x/decode_eval2000_sw1_tg/score_*/eval2000.ctm.filt.dtl | sort -k5 -g | head -1; done

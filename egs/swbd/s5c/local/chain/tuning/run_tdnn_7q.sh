@@ -128,13 +128,12 @@ if [ $stage -le 12 ]; then
   mkdir -p $dir/configs
 
   cat <<EOF > $dir/configs/network.xconfig
-  input dim=100 name=ivector
-  input dim=40 name=input
+  input dim=80 name=input
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-1,0,1) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=1536
@@ -166,7 +165,7 @@ fi
 if [ $stage -le 13 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b{11,12,13,14}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
 #    --cmd "queue.pl --config /home/dpovey/queue_conly.conf" \
@@ -174,7 +173,6 @@ if [ $stage -le 13 ]; then
 
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$train_cmd" \
-    --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
@@ -191,13 +189,14 @@ if [ $stage -le 13 ]; then
     --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs 6 \
+    --trainer.num-epochs 30 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.00025 \
     --trainer.optimization.final-effective-lrate 0.000025 \
     --trainer.max-param-change 2.0 \
     --cleanup.remove-egs $remove_egs \
+    --cleanup.preserve-model-interval 50 \
     --feat-dir data/${train_set}_hires \
     --tree-dir $treedir \
     --lat-dir exp/tri4_lats_nodup$suffix \
@@ -224,7 +223,6 @@ if [ $stage -le 15 ]; then
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $decode_nj --cmd "$decode_cmd" $iter_opts \
-          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
           $graph_dir data/${decode_set}_hires \
           $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_tg || exit 1;
       if $has_fisher; then
@@ -240,37 +238,5 @@ if [ $stage -le 15 ]; then
     exit 1
   fi
 fi
-
-if $test_online_decoding && [ $stage -le 16 ]; then
-  # note: if the features change (e.g. you add pitch features), you will have to
-  # change the options of the following command line.
-  steps/online/nnet3/prepare_online_decoding.sh \
-       --mfcc-config conf/mfcc_hires.conf \
-       $lang exp/nnet3/extractor $dir ${dir}_online
-
-  rm $dir/.error 2>/dev/null || true
-  for decode_set in train_dev eval2000 $maybe_rt03; do
-    (
-      # note: we just give it "$decode_set" as it only uses the wav.scp, the
-      # feature type does not matter.
-
-      steps/online/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-          --acwt 1.0 --post-decode-acwt 10.0 \
-         $graph_dir data/${decode_set}_hires \
-         ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_tg || exit 1;
-      if $has_fisher; then
-          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
-      fi
-    ) || touch $dir/.error &
-  done
-  wait
-  if [ -f $dir/.error ]; then
-    echo "$0: something went wrong in decoding"
-    exit 1
-  fi
-fi
-
 
 exit 0;
