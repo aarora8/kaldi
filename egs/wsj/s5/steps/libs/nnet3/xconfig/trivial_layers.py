@@ -70,6 +70,7 @@ class XconfigRenormComponent(XconfigLayerBase):
         return configs
 
 
+
 class XconfigBatchnormComponent(XconfigLayerBase):
     """This class is for parsing lines like
      'batchnorm-component name=batchnorm input=Append(-3,0,3)'
