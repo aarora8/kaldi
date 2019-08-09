@@ -145,7 +145,6 @@ frames_per_eg=150,110,100
 remove_egs=true
 common_egs_dir=
 xent_regularize=0.1
-dropout_schedule='0,0@0.20,0.5@0.50,0'
 
 test_online_decoding=true  # if true, it will run the last decoding stage.
 
@@ -208,8 +207,8 @@ if [ $stage -le 14 ]; then
 
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
-  affine_opts="l2-regularize=0.008 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
-  tdnnf_opts="l2-regularize=0.008 dropout-proportion=0.0 bypass-scale=0.75"
+  affine_opts="l2-regularize=0.008"
+  tdnnf_opts="l2-regularize=0.008 bypass-scale=0.75"
   linear_opts="l2-regularize=0.008 orthonormal-constraint=-1.0"
   prefinal_opts="l2-regularize=0.008"
   output_opts="l2-regularize=0.002"
@@ -218,15 +217,18 @@ if [ $stage -le 14 ]; then
 
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
-  input dim=40 name=input
+  input dim=80 name=input
 
-  # please note that it is important to have input layer with the name=input
-  # as the layer immediately preceding the fixed-affine-layer to enable
-  # the use of short notation for the descriptor
+  # this takes the MFCCs and generates filterbank coefficients.  The MFCCs
+  # are more compressible so we prefer to dump the MFCCs to disk rather
+  # than filterbanks.
+  idct-layer name=idct input=input dim=80 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat include-in-init=true
+  batchnorm-component name=batchnorm0 input=idct include-in-init=true
+  spec-augment-layer name=spec-augment freq-max-proportion=0.5 time-zeroed-proportion=0.2 time-mask-max-frames=20 include-in-init=true
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=1536
+  relu-batchnorm-layer name=tdnn1 $affine_opts dim=1536
   tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
   tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
   tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
@@ -273,7 +275,6 @@ if [ $stage -le 15 ]; then
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0 --constrained false" \
     --egs.chunk-width $frames_per_eg \
-    --trainer.dropout-schedule $dropout_schedule \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 2500000 \
@@ -284,6 +285,7 @@ if [ $stage -le 15 ]; then
     --trainer.optimization.final-effective-lrate 0.000015 \
     --trainer.max-param-change 2.0 \
     --cleanup.remove-egs $remove_egs \
+    --cleanup.preserve-model-interval 50 \
     --feat-dir $train_data_dir \
     --tree-dir $tree_dir \
     --lat-dir $lat_dir \

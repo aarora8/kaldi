@@ -33,7 +33,7 @@ nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1i   # affix for the TDNN directory name
+affix=1i_2_4   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
@@ -165,7 +165,7 @@ if [ $stage -le 13 ]; then
   # than filterbanks.
   idct-layer name=idct input=input dim=40 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat include-in-init=true
   batchnorm-component name=batchnorm0 input=idct include-in-init=true
-  spec-augment-layer name=spec-augment freq-max-proportion=0.5 time-zeroed-proportion=0.2 time-mask-max-frames=20 include-in-init=true
+  spec-augment-layer name=spec-augment freq-max-proportion=0.4 time-zeroed-proportion=0.001 time-mask-max-frames=2 include-in-init=true
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
