@@ -32,7 +32,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-affix=7q
+affix=7q_ly21_big
 if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
 
 decode_iter=
@@ -139,24 +139,24 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 $affine_opts dim=1536
-  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
-  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
-  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
-  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=0
-  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
-  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
-  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
-  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
-  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
-  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
-  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
-  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
-  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
-  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
-  linear-component name=prefinal-l dim=256 $linear_opts
+  relu-batchnorm-layer name=tdnn1 $affine_opts dim=2136
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  linear-component name=prefinal-l dim=512 $linear_opts
 
-  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=1536 small-dim=256
+  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=2136 small-dim=512
   output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
   prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts big-dim=1536 small-dim=256

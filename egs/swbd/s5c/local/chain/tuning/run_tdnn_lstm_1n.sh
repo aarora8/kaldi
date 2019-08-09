@@ -52,7 +52,7 @@ dropout_schedule='0,0@0.20,0.3@0.50,0'
 remove_egs=true
 common_egs_dir=
 
-test_online_decoding=true  # if true, it will run the last decoding stage.
+test_online_decoding=false  # if true, it will run the last decoding stage.
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -125,49 +125,41 @@ if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
-
-  opts="l2-regularize=0.002"
-  linear_opts="orthonormal-constraint=1.0"
-  lstm_opts="l2-regularize=0.0005 decay-time=40"
-  output_opts="l2-regularize=0.0005 output-delay=$label_delay max-change=1.5 dim=$num_targets"
-
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  lstm_opts="decay-time=20 dropout-proportion=0.0"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
-  input dim=40 name=input
+  input dim=80 name=input
+  idct-layer name=idct input=input dim=80 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat include-in-init=true
+  batchnorm-component name=batchnorm0 input=idct include-in-init=true
+  spec-augment-layer name=spec-augment freq-max-proportion=0.5 time-zeroed-proportion=0.2 time-mask-max-frames=20 include-in-init=true
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
-  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
-
-  # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 $opts dim=1280
-  linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
-  relu-batchnorm-layer name=tdnn2 $opts input=Append(0,1) dim=1280
-  linear-component name=tdnn3l dim=256 $linear_opts
-  relu-batchnorm-layer name=tdnn3 $opts dim=1280
-  linear-component name=tdnn4l dim=256 $linear_opts input=Append(-1,0)
-  relu-batchnorm-layer name=tdnn4 $opts input=Append(0,1) dim=1280
-  linear-component name=tdnn5l dim=256 $linear_opts
-  relu-batchnorm-layer name=tdnn5 $opts dim=1280 input=Append(tdnn5l, tdnn3l)
-  linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn6 $opts input=Append(0,3) dim=1280
-  linear-component name=lstm1l dim=256 $linear_opts input=Append(-3,0)
-  fast-lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=128 delay=-3 dropout-proportion=0.0 $lstm_opts
-  relu-batchnorm-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1280
-  linear-component name=tdnn8l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn8 $opts input=Append(0,3) dim=1280
-  linear-component name=lstm2l dim=256 $linear_opts input=Append(-3,0)
-  fast-lstmp-layer name=lstm2 cell-dim=1280 recurrent-projection-dim=256 non-recurrent-projection-dim=128 delay=-3 dropout-proportion=0.0 $lstm_opts
-  relu-batchnorm-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn4l) dim=1280
-  linear-component name=tdnn10l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn10 $opts input=Append(0,3) dim=1280
-  linear-component name=lstm3l dim=256 $linear_opts input=Append(-3,0)
-  fast-lstmp-layer name=lstm3 cell-dim=1280 recurrent-projection-dim=256 non-recurrent-projection-dim=128 delay=-3 dropout-proportion=0.0 $lstm_opts
-
-  output-layer name=output input=lstm3  include-log-softmax=false $output_opts
-
-  output-layer name=output-xent input=lstm3 learning-rate-factor=$learning_rate_factor $output_opts
+  relu-batchnorm-layer name=tdnn1 dim=1024
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
+  # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
+  fast-lstmp-layer name=fastlstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
+  fast-lstmp-layer name=fastlstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  fast-lstmp-layer name=fastlstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  ## adding the layers for chain branch
+  output-layer name=output input=fastlstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
+  # adding the layers for xent branch
+  # This block prints the configs for a separate output that will be
+  # trained with a cross-entropy objective in the 'chain' models... this
+  # has the effect of regularizing the hidden parts of the model.  we use
+  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
+  # 0.5 / args.xent_regularize is suitable as it means the xent
+  # final-layer learns at a rate independent of the regularization
+  # constant; and the 0.5 was tuned so as to make the relative progress
+  # similar in the xent and regular final layers.
+  output-layer name=output-xent input=fastlstm3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -175,7 +167,7 @@ fi
 if [ $stage -le 13 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-      /export/c0{1,2,5,7}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/chain/train.py --stage $train_stage \
@@ -187,15 +179,16 @@ if [ $stage -le 13 ]; then
     --chain.l2-regularize 0.0 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --trainer.dropout-schedule $dropout_schedule \
     --trainer.num-chunk-per-minibatch 64,32 \
     --trainer.frames-per-iter 1500000 \
     --trainer.max-param-change 2.0 \
-    --trainer.num-epochs 6 \
+    --trainer.num-epochs 8 \
+    --trainer.optimization.shrink-value 0.99 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
+    --trainer.dropout-schedule $dropout_schedule \
     --trainer.optimization.momentum 0.0 \
     --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
