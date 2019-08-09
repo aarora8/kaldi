@@ -99,15 +99,19 @@ awk '{print $1}' $tmpdir/segments | \
 join $tmpdir/utt2spk_stm $tmpdir/segments | \
   awk '{ utt=$1; spk=$2; wav=$3; t_beg=$4; t_end=$5;
          if(spk_prev == spk && t_end_prev > t_beg) {
-           print "s/^"utt, wav, t_beg, t_end"$/"utt, wav, t_end_prev, t_end"/;";
+           print utt, wav, t_beg, t_end">"utt, wav, t_end_prev, t_end;
          }
          spk_prev=spk; t_end_prev=t_end;
        }' > $tmpdir/segments_to_fix
 
-if [ -s $tmpdir/segments_to_fix ]; then
+if [ `cat $tmpdir/segments_to_fix | wc -l` -gt 0 ]; then
   echo "$0. Applying following fixes to segments"
   cat $tmpdir/segments_to_fix
-  perl -i -pf $tmpdir/segments_to_fix $tmpdir/segments
+  while read line; do
+     p1=`echo $line | awk -F'>' '{print $1}'`
+     p2=`echo $line | awk -F'>' '{print $2}'`
+     sed -ir "s:$p1:$p2:" $tmpdir/segments
+  done < $tmpdir/segments_to_fix
 fi
 
 # Copy stuff into its final locations [this has been moved from the format_data
@@ -125,4 +129,3 @@ local/convert2stm.pl $dir utt2spk_stm > $dir/stm
 utils/validate_data_dir.sh --no-feats $dir
 
 echo AMI $SET set data preparation succeeded.
-

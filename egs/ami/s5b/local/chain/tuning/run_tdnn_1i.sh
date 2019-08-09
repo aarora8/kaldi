@@ -29,14 +29,15 @@ ihm_gmm=tri3  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
 ivector_transform_type=pca
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
-num_epochs=9
+num_epochs=15
 remove_egs=true
-
+decode_iter=
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1i  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+#tdnn_affix=1i_swbd_wide_ep15  #affix for TDNN direory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1j_34M_woaug  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 
@@ -56,15 +57,15 @@ where "nvcc" is installed.
 EOF
 fi
 
-local/nnet3/run_ivector_common.sh --stage $stage \
-                                  --mic $mic \
-                                  --nj $nj \
-                                  --min-seg-len $min_seg_len \
-                                  --train-set $train_set \
-                                  --gmm $gmm \
-                                  --num-threads-ubm $num_threads_ubm \
-                                  --ivector-transform-type "$ivector_transform_type" \
-                                  --nnet3-affix "$nnet3_affix"
+#local/nnet3/run_ivector_common.sh --stage $stage \
+#                                  --mic $mic \
+#                                  --nj $nj \
+#                                  --min-seg-len $min_seg_len \
+#                                  --train-set $train_set \
+#                                  --gmm $gmm \
+#                                  --num-threads-ubm $num_threads_ubm \
+#                                  --ivector-transform-type "$ivector_transform_type" \
+#                                  --nnet3-affix "$nnet3_affix"
 
 # Note: the first stage of the following script is stage 8.
 local/nnet3/prepare_lores_feats.sh --stage $stage \
@@ -169,45 +170,47 @@ if [ $stage -le 15 ]; then
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
-  opts="l2-regularize=0.02"
-  output_opts="l2-regularize=0.004"
+  affine_opts="l2-regularize=0.01"
+  tdnnf_opts="l2-regularize=0.01 bypass-scale=0.66"
+  linear_opts="l2-regularize=0.01 orthonormal-constraint=-1.0"
+  prefinal_opts="l2-regularize=0.01"
+  output_opts="l2-regularize=0.002"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
-  input dim=40 name=input
+  input dim=80 name=input
 
-  # please note that it is important to have input layer with the name=input
-  # as the layer immediately preceding the fixed-affine-layer to enable
-  # the use of short notation for the descriptor
+  # this takes the MFCCs and generates filterbank coefficients.  The MFCCs
+  # are more compressible so we prefer to dump the MFCCs to disk rather
+  # than filterbanks.
+  idct-layer name=idct input=input dim=80 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat include-in-init=true
+  batchnorm-component name=batchnorm0 input=idct include-in-init=true
+  spec-augment-layer name=spec-augment freq-max-proportion=0.5 time-zeroed-proportion=0.2 time-mask-max-frames=20 include-in-init=true
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
-
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=450 $opts
-  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=450 $opts
-  relu-batchnorm-layer name=tdnn3 dim=450 $opts
-  relu-batchnorm-layer name=tdnn4 input=Append(-1,0,1) dim=450 $opts
-  relu-batchnorm-layer name=tdnn5 dim=450 $opts
-  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=450 $opts
-  relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=450 $opts
-  relu-batchnorm-layer name=tdnn8 input=Append(-3,0,3) dim=450 $opts
-  relu-batchnorm-layer name=tdnn9 input=Append(-3,0,3) dim=450 $opts
+  relu-batchnorm-layer name=tdnn1 $affine_opts dim=2136
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
+  linear-component name=prefinal-l dim=512 $linear_opts
 
-  ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain input=tdnn9 dim=450 target-rms=0.5 $opts
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
+  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=2136 small-dim=512
+  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
-  # adding the layers for xent branch
-  # This block prints the configs for a separate output that will be
-  # trained with a cross-entropy objective in the 'chain' models... this
-  # has the effect of regularizing the hidden parts of the model.  we use
-  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
-  # 0.5 / args.xent_regularize is suitable as it means the xent
-  # final-layer learns at a rate independent of the regularization
-  # constant; and the 0.5 was tuned so as to make the relative progress
-  # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn9 dim=450 target-rms=0.5 $opts
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5 $output_opts
+  prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts big-dim=2136 small-dim=512
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 
 EOF
 
@@ -232,7 +235,7 @@ if [ $stage -le 16 ]; then
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch 128 \
+    --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial 2 \
@@ -256,15 +259,21 @@ if [ $stage -le 17 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang_${LM} $dir $graph_dir
 fi
 
+iter_opts=
+if [ ! -z $decode_iter ]; then
+  iter_opts=" --iter $decode_iter "
+fi
+
 if [ $stage -le 18 ]; then
   rm $dir/.error 2>/dev/null || true
   for decode_set in dev eval; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj $nj --cmd "$decode_cmd" \
+          --nj $nj --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir exp/$mic/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
           --scoring-opts "--min-lmwt 5 " \
-         $graph_dir data/$mic/${decode_set}_hires $dir/decode_${decode_set} || exit 1;
+         $graph_dir data/$mic/${decode_set}_hires \
+         $dir/decode_${decode_set}${decode_iter:+_$decode_iter} || exit 1;
       ) || touch $dir/.error &
   done
   wait
@@ -273,4 +282,5 @@ if [ $stage -le 18 ]; then
     exit 1
   fi
 fi
+
 exit 0
