@@ -38,7 +38,7 @@ chime5_corpus=/export/corpora4/CHiME5
 chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
 audio_dir=${chime6_corpus}/audio
-
+enhanced_dir=enhanced
 if [[ ${enhancement} == *gss* ]]; then
   enhanced_dir=${enhanced_dir}_multiarray
   enhancement=${enhancement}
@@ -61,12 +61,12 @@ train_set=train_worn_simu_u400k
 # which is installed via miniconda in ./local/check_tools.sh
 ###########################################################################
 
-if [ $stage -le 0 ]; then
-  local/generate_chime6_data.sh \
-    --cmd "$train_cmd" \
-    ${chime5_corpus} \
-    ${chime6_corpus}
-fi
+#if [ $stage -le 0 ]; then
+#  local/generate_chime6_data.sh \
+#    --cmd "$train_cmd" \
+#    ${chime5_corpus} \
+#    ${chime6_corpus}
+#fi
 
 ###########################################################################
 # We prepare dict and lang in stages 1 to 3.
@@ -77,6 +77,7 @@ if [ $stage -le 1 ]; then
   for mictype in worn; do
     local/prepare_data.sh --mictype ${mictype} \
 			  ${audio_dir}/train ${json_dir}/train data/train_${mictype}
+    utils/validate_data_dir.sh --no-feats data/train_${mictype} || exit 1
   done
   # dev worn is needed for the LM part
   for dataset in dev; do
@@ -84,6 +85,7 @@ if [ $stage -le 1 ]; then
       local/prepare_data.sh --mictype ${mictype} \
 			    ${audio_dir}/${dataset} ${json_dir}/${dataset} \
 			    data/${dataset}_${mictype}
+      utils/validate_data_dir.sh --no-feats data/${dataset}_${mictype}
     done
   done
 fi
@@ -117,52 +119,56 @@ fi
 
 if [ $stage -le 4 ]; then
   echo "$0:  enhance data..."
-  if [ ! -d pb_chime5/ ]; then
-    local/install_pb_chime5.sh
-  fi
-
-  if [ ! -f pb_chime5/cache/chime6.json ]; then
-    (
-    cd pb_chime5
-    miniconda_dir=$HOME/miniconda3/
-    export PATH=$miniconda_dir/bin:$PATH
-    export CHIME6_DIR=$chime6_corpus
-    make cache/chime6.json
-    )
-  fi
-
-  # we are not using S12 since GSS fails for some utterence for this session
-  for dset in S03 S04 S05 S06 S07 S17 S08 S13 S16 S18 S19 S20 S22 S23 S24; do
-    local/run_gss.sh \
-      --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
-      ${dset} \
-      ${enhanced_dir} \
-      ${enhanced_dir} || exit 1
-  done
+#  if [ ! -d pb_chime5/ ]; then
+#    local/install_pb_chime5.sh
+#  fi
+#
+#  if [ ! -f pb_chime5/cache/chime6.json ]; then
+#    (
+#    cd pb_chime5
+#    miniconda_dir=$HOME/miniconda3/
+#    export PATH=$miniconda_dir/bin:$PATH
+#    export CHIME6_DIR=$chime6_corpus
+#    make cache/chime6.json
+#    )
+#  fi
+#
+#  # we are not using S12 since GSS fails for some utterence for this session
+#  for dset in S03 S04 S05 S06 S07 S17 S08 S13 S16 S18 S19 S20 S22 S23 S24; do
+#    local/run_gss.sh \
+#      --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
+#      ${dset} \
+#      ${enhanced_dir} \
+#      ${enhanced_dir} || exit 1
+#  done
 
   local/prepare_data.sh --mictype gss ${enhanced_dir}/audio/train ${json_dir}/train data/train_gss_multiarray
+  utils/fix_data_dir.sh data/train_gss_multiarray
+  utils/validate_data_dir.sh --no-feats data/train_gss_multiarray || exit 1
 fi
 
 if [ $stage -le 5 ]; then
   # skip u03 and u04 as they are missing
-  for mictype in u01 u02 u05 u06; do
-    local/run_wpe.sh --nj 8 --cmd "$train_cmd --mem 30G" \
-      ${audio_dir}/train \
-      ${dereverb_dir}/train \
-      ${mictype}
-  done
-
-  for mictype in u01 u02 u05 u06; do
-    local/run_beamformit.sh --cmd "$train_cmd" \
-      ${dereverb_dir}/train \
-      enhan/train_beamformit_${mictype} \
-      ${mictype}
-  done
+#  for mictype in u01 u02 u05 u06; do
+#    local/run_wpe.sh --nj 8 --cmd "$train_cmd --mem 30G" \
+#      ${audio_dir}/train \
+#      ${dereverb_dir}/train \
+#      ${mictype}
+#  done
+#
+#  for mictype in u01 u02 u05 u06; do
+#    local/run_beamformit.sh --cmd "$train_cmd" \
+#      ${dereverb_dir}/train \
+#      enhan/train_beamformit_${mictype} \
+#      ${mictype}
+#  done
 
   for mictype in u01 u02 u05 u06; do
       mictype_audio_dir=enhan/train_beamformit_${mictype}
-      local/prepare_data.sh --mictype $mictype \
-          ${mictype_audio_dir} ${json_dir}/train_orig data/train_${mictype}
+      local/prepare_data.sh --mictype $mictype  --enhanced true \
+          ${mictype_audio_dir} ${json_dir}/train data/train_${mictype}
+      utils/fix_data_dir.sh data/train_${mictype}
+      utils/validate_data_dir.sh --no-feats data/train_${mictype} || exit 1
     done
 fi
 
