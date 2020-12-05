@@ -17,6 +17,7 @@ num_data_reps=4
 foreground_snrs="20:10:15:5:0"
 background_snrs="20:10:15:5:0"
 enhancement=gss # gss or beamformit
+gss_nj=50
 
 # End configuration section
 . ./utils/parse_options.sh
@@ -32,20 +33,15 @@ set -e # exit on error
 
 # chime5 main directory path
 # please change the path accordingly
-chime5_corpus=/export/corpora4/CHiME5
+chime5_corpus=/export/corpora5/CHiME5
 # chime6 data directories, which are generated from ${chime5_corpus},
 # to synchronize audio files across arrays and modify the annotation (JSON) file accordingly
 chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
 audio_dir=${chime6_corpus}/audio
-
+enhanced_dir=enhanced
 if [[ ${enhancement} == *gss* ]]; then
   enhanced_dir=${enhanced_dir}_multiarray
-  enhancement=${enhancement}
-fi
-
-if [[ ${enhancement} == *beamformit* ]]; then
-  enhanced_dir=${enhanced_dir}
   enhancement=${enhancement}
 fi
 
@@ -61,45 +57,44 @@ train_set=train_worn_simu_u400k
 # which is installed via miniconda in ./local/check_tools.sh
 ###########################################################################
 
-if [ $stage -le 0 ]; then
-  local/generate_chime6_data.sh \
-    --cmd "$train_cmd" \
-    ${chime5_corpus} \
-    ${chime6_corpus}
-fi
+#if [ $stage -le 0 ]; then
+#  local/generate_chime6_data.sh \
+#    --cmd "$train_cmd" \
+#    ${chime5_corpus} \
+#    ${chime6_corpus}
+#fi
 
 ###########################################################################
 # We prepare dict and lang in stages 1 to 3.
 ###########################################################################
 
-if [ $stage -le 1 ]; then
-  echo "$0:  prepare data..."
-  for mictype in worn; do
-    local/prepare_data.sh --mictype ${mictype} \
-			  ${audio_dir}/train ${json_dir}/train data/train_${mictype}
-  done
-  # dev worn is needed for the LM part
-  for dataset in dev; do
-    for mictype in worn; do
-      local/prepare_data.sh --mictype ${mictype} \
-			    ${audio_dir}/${dataset} ${json_dir}/${dataset} \
-			    data/${dataset}_${mictype}
-    done
-  done
-fi
-
-if [ $stage -le 2 ]; then
-  echo "$0:  train lm ..."
-  local/prepare_dict.sh data/local/dict_nosp
-
-  utils/prepare_lang.sh \
-    data/local/dict_nosp "<unk>" data/local/lang_nosp data/lang_nosp
-
-  local/train_lms_srilm.sh \
-    --train-text data/train_worn/text --dev-text data/dev_worn/text \
-    --oov-symbol "<unk>" --words-file data/lang_nosp/words.txt \
-    data/ data/srilm
-fi
+#if [ $stage -le 1 ]; then
+#  echo "$0:  prepare data..."
+#  for mictype in worn; do
+#    local/prepare_data.sh --mictype ${mictype} \
+#			  ${audio_dir}/train ${json_dir}/train data/train_${mictype}
+#  done
+#  for dataset in dev; do
+#    for mictype in worn; do
+#      local/prepare_data.sh --mictype ${mictype} \
+#			    ${audio_dir}/${dataset} ${json_dir}/${dataset} \
+#			    data/${dataset}_${mictype}
+#    done
+#  done
+#fi
+#
+#if [ $stage -le 2 ]; then
+#  echo "$0:  train lm ..."
+#  #local/prepare_dict.sh data/local/dict_nosp
+#
+#  utils/prepare_lang.sh \
+#    data/local/dict_nosp "<unk>" data/local/lang_nosp data/lang_nosp
+#
+#  local/train_lms_srilm.sh \
+#    --train-text data/train_worn/text --dev-text data/dev_worn/text \
+#    --oov-symbol "<unk>" --words-file data/lang_nosp/words.txt \
+#    data/ data/srilm
+#fi
 
 #########################################################################################
 # In stages 3 to 8, we augment and fix train data for our training purpose. point source
@@ -107,15 +102,15 @@ fi
 # its augmentation and all the worn set utterances in train.
 #########################################################################################
 
-if [ $stage -le 3 ]; then
-  # remove possibly bad sessions (P11_S03, P52_S19, P53_S24, P54_S24)
-  # see http://spandh.dcs.shef.ac.uk/chime_challenge/data.html for more details
-  utils/copy_data_dir.sh data/train_worn data/train_worn_org # back up
-  grep -v -e "^P11_S03" -e "^P52_S19" -e "^P53_S24" -e "^P54_S24" data/train_worn_org/text > data/train_worn/text
-  utils/fix_data_dir.sh data/train_worn
-fi
+#if [ $stage -le 3 ]; then
+#  # remove possibly bad sessions (P11_S03, P52_S19, P53_S24, P54_S24)
+#  # see http://spandh.dcs.shef.ac.uk/chime_challenge/data.html for more details
+#  utils/copy_data_dir.sh data/train_worn data/train_worn_org # back up
+#  grep -v -e "^P11_S03" -e "^P52_S19" -e "^P53_S24" -e "^P54_S24" data/train_worn_org/text > data/train_worn/text
+#  utils/fix_data_dir.sh data/train_worn
+#fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 4 ] && [[ ${enhancement} == *gss* ]]; then
   echo "$0:  enhance data..."
   if [ ! -d pb_chime5/ ]; then
     local/install_pb_chime5.sh
@@ -131,8 +126,7 @@ if [ $stage -le 4 ]; then
     )
   fi
 
-  # we are not using S12 since GSS fails for some utterence for this session
-  for dset in S03 S04 S05 S06 S07 S17 S08 S13 S16 S18 S19 S20 S22 S23 S24; do
+  for dset in S12; do
     local/run_gss.sh \
       --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
       ${dset} \
@@ -140,38 +134,11 @@ if [ $stage -le 4 ]; then
       ${enhanced_dir} || exit 1
   done
 
-  local/prepare_data.sh --mictype gss ${enhanced_dir}/audio/train ${json_dir}/train data/train_gss_multiarray
+  local/prepare_data.sh --mictype gss ${enhanced_dir}/audio/train ${json_dir}/train data/train_${enhancement}
 fi
 
 if [ $stage -le 5 ]; then
-  # skip u03 and u04 as they are missing
-  for mictype in u01 u02 u05 u06; do
-    local/run_wpe.sh --nj 8 --cmd "$train_cmd --mem 30G" \
-      ${audio_dir}/train \
-      ${dereverb_dir}/train \
-      ${mictype}
-  done
-
-  for mictype in u01 u02 u05 u06; do
-    local/run_beamformit.sh --cmd "$train_cmd" \
-      ${dereverb_dir}/train \
-      enhan/train_beamformit_${mictype} \
-      ${mictype}
-  done
-
-  for mictype in u01 u02 u05 u06; do
-      mictype_audio_dir=enhan/train_beamformit_${mictype}
-      local/prepare_data.sh --mictype $mictype \
-          ${mictype_audio_dir} ${json_dir}/train_orig data/train_${mictype}
-    done
-fi
-
-
-if [ $stage -le 6 ]; then
-  # TODO: change training data to 280h including train_worn (40 * 2), gss (40),
-  # and beamformit(40 * 4)
-  utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
-  utils/combine_data.sh data/${train_set} data/train_worn train_uall data/train_gss_multiarray
+  utils/combine_data.sh data/${train_set} data/train_worn data/train_gss
 
   # only use left channel for worn mic recognition
   # you can use both left and right channels for training
@@ -200,11 +167,9 @@ if [ $stage -le 7 ]; then
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
   echo "$0:  make features..."
-  mfccdir=mfcc
   for x in ${train_set}; do
-    steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" \
-		       data/$x exp/make_mfcc/$x $mfccdir
-    steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
+    steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" data/$x
+    steps/compute_cmvn_stats.sh data/$x
     utils/fix_data_dir.sh data/$x
   done
 fi
