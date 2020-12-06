@@ -177,7 +177,7 @@ if [ $stage -le 6 ]; then
   # TODO: change training data to 280h including train_worn (40 * 2), gss (40),
   # and beamformit(40 * 4)
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
-  utils/combine_data.sh data/${train_set} data/train_worn train_uall data/train_gss_multiarray
+  utils/combine_data.sh data/${train_set} data/train_worn data/train_uall data/train_gss_multiarray
 
   # only use left channel for worn mic recognition
   # you can use both left and right channels for training
@@ -206,11 +206,9 @@ if [ $stage -le 7 ]; then
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
   echo "$0:  make features..."
-  mfccdir=mfcc
   for x in ${train_set}; do
-    steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" \
-		       data/$x exp/make_mfcc/$x $mfccdir
-    steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
+    steps/make_mfcc.sh --nj 60 --cmd "$train_cmd" data/$x
+    steps/compute_cmvn_stats.sh data/$x
     utils/fix_data_dir.sh data/$x
   done
 fi

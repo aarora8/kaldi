@@ -140,6 +140,16 @@ elif [ $mictype == "ref" ]; then
     awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
     sed -e "s/_[A-Z]*\././2" |\
     sed -e "s/ P.._/ /" > $dir/segments
+elif [ $mictype == "gss" ]; then
+  find -L $adir -name  "P[0-9]*_S[0-9]*.wav" | \
+    perl -ne '{
+      chomp;
+      $path = $_;
+      next unless $path;
+      @F = split "/", $path;
+      ($f = $F[@F-1]) =~ s/.wav//;
+      print "$f $path\n";
+    }' | sort > $dir/wav.scp
 else
   cut -d" " -f 1 $dir/text | \
     awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
