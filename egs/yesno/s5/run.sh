@@ -34,6 +34,12 @@ steps/train_mono.sh --nj 1 --cmd "$train_cmd" \
   --totgauss 400 \
   data/train_yesno data/lang exp/mono0a 
   
+steps/align_si.sh --nj 1 --cmd "$train_cmd" \
+            data/train_yesno data/lang exp/mono0a exp/mono_ali
+
+steps/train_deltas.sh --cmd "$train_cmd" \
+            200 1000 data/train_yesno data/lang exp/mono_ali exp/tri1
+
 # Graph compilation  
 utils/mkgraph.sh data/lang_test_tg exp/mono0a exp/mono0a/graph_tgpr
 
