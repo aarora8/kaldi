@@ -49,7 +49,7 @@ if [[ ${enhancement} == *beamformit* ]]; then
   enhancement=${enhancement}
 fi
 
-test_sets="dev_${enhancement} eval_${enhancement}"
+test_sets="dev_${enhancement}"
 train_set=train_worn_simu_u400k
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
@@ -291,7 +291,7 @@ fi
 if [ $stage -le 15 ]; then
   # chain TDNN
   local/chain/run_cnn_tdnn.sh --nj ${nj} \
-    --stage $nnet_stage \
+    --stage 13 \
     --train-set ${train_set}_cleaned \
     --test-sets "$test_sets" \
     --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned_rvb
