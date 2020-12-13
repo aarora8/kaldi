@@ -303,7 +303,7 @@ fi
 ##########################################################################
 
 if [ $stage -le 16 ]; then
-  local/decode.sh --stage $decode_stage \
+  local/decode.sh --stage 1 \
     --enhancement $enhancement \
     --train_set "$train_set"
 fi

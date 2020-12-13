@@ -14,13 +14,17 @@
 
 # Begin configuration section.
 decode_nj=20
-gss_nj=50
+gss_nj=60
 stage=0
 enhancement=gss        # for a new enhancement method,
                        # change this variable and stage 4
 
 # training data
 train_set=train_worn_simu_u400k
+#GSS parameters
+multiarray=True
+bss_iterations=20
+context_samples=240000
 # End configuration section
 . ./utils/parse_options.sh
 
@@ -51,7 +55,7 @@ if [[ ${enhancement} == *beamformit* ]]; then
 fi
 
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
-test_sets="dev_${enhancement} eval_${enhancement}"
+test_sets="dev_${enhancement}"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
@@ -99,20 +103,24 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *gss* ]]; then
     )
   fi
 
-  for dset in dev eval; do
+  for dset in eval; do
     local/run_gss.sh \
       --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
+      --multiarray $multiarray --bss_iterations $bss_iterations \
+      --context_samples $context_samples \
       ${dset} \
       ${enhanced_dir} \
       ${enhanced_dir} || exit 1
   done
 
-  for dset in dev eval; do
+  for dset in eval; do
     local/prepare_data.sh --mictype gss ${enhanced_dir}/audio/${dset} \
       ${json_dir}/${dset} data/${dset}_${enhancement} || exit 1
   done
+  utils/fix_data_dir.sh data/eval_gss_multiarray
+  utils/validate_data_dir.sh --no-feats data/eval_gss_multiarray || exit 1
 fi
-
+exit
 #######################################################################
 # Prepare the dev and eval data with dereverberation (WPE) and
 # beamforming.
@@ -227,7 +235,7 @@ if [ $stage -le 3 ]; then
   for data in $test_sets; do
     (
       local/nnet3/decode.sh --affix 2stage --pass2-decode-opts "--min-active 1000" \
-        --acwt 1.0 --post-decode-acwt 10.0 \
+        --acwt 1.0 --post-decode-acwt 10.0  --stage 1 \
         --frames-per-chunk 150 --nj $decode_nj \
         --ivector-dir exp/nnet3${nnet3_affix} \
         data/${data} data/lang${lm_suffix} \

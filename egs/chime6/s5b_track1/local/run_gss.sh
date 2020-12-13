@@ -8,9 +8,9 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 # Config:
 cmd=run.pl
 nj=4
-multiarray=outer_array_mics
-bss_iterations=5
-context_samples=160000
+multiarray=True
+bss_iterations=20
+context_samples=240000
 . utils/parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
