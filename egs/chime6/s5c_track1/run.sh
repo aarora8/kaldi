@@ -22,6 +22,7 @@ multiarray=True
 bss_iterations=20
 context_samples=240000
 gss_nj=80
+session_list="S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24"
 # End configuration section
 . ./utils/parse_options.sh
 
@@ -138,7 +139,7 @@ if [ $stage -le 4 ]; then
   fi
 
   # we are not using S12 since GSS fails for some utterence for this session
-  for dset in S03; do
+  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
     local/run_gss.sh \
       --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
       --context_samples $context_samples \
@@ -155,7 +156,7 @@ fi
 if [ $stage -le 5 ]; then
   echo "$0:  enhance data..."
 
-  for dset in S03; do
+  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
     local/run_gss.sh \
       --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
       --multiarray $multiarray \
@@ -168,7 +169,7 @@ if [ $stage -le 5 ]; then
   utils/fix_data_dir.sh data/train_gss_multiarray_$multiarray
   utils/validate_data_dir.sh --no-feats data/train_gss_multiarray_$multiarray || exit 1
 
-  for dset in S03; do
+  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
     local/run_gss.sh \
       --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
       --bss_iterations $bss_iterations \
@@ -181,7 +182,7 @@ if [ $stage -le 5 ]; then
   utils/fix_data_dir.sh data/train_gss_multiarray_$bss_iterations
   utils/validate_data_dir.sh --no-feats data/train_gss_multiarray_$bss_iterations || exit 1
 
-  for dset in S03; do
+  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
     local/run_gss.sh \
       --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
       ${dset} \
