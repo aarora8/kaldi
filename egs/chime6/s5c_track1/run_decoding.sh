@@ -66,12 +66,12 @@ train_set=train_worn_simu_u400k
 # which is installed via miniconda in ./local/check_tools.sh
 ###########################################################################
 
-if [ $stage -le 0 ]; then
-  local/generate_chime6_data.sh \
-    --cmd "$train_cmd" \
-    ${chime5_corpus} \
-    ${chime6_corpus}
-fi
+#if [ $stage -le 0 ]; then
+#  local/generate_chime6_data.sh \
+#    --cmd "$train_cmd" \
+#    ${chime5_corpus} \
+#    ${chime6_corpus}
+#fi
 
 ###########################################################################
 # We prepare dict and lang in stages 1 to 3.
@@ -248,13 +248,19 @@ if [ $stage -le 6 ]; then
   utils/fix_data_dir.sh data/train_gss_$reference_array
   utils/validate_data_dir.sh --no-feats data/train_gss_$reference_array || exit 1
 fi
-exit
+
 if [ $stage -le 7 ]; then
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
-  utils/combine_data.sh data/${train_set} data/train_worn data/train_uall data/train_gss_multiarray
+  utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
+
+  utils/combine_data.sh data/train_gss_uall data/train_gss_U01 data/train_gss_U02 data/train_gss_U05 data/train_gss_U06
+
+  utils/combine_data.sh data/train_gss_multiarray_all data/train_gss_multiarray data/train_gss_multiarray_True data/train_gss_multiarray_first_array_mics 
+
+  utils/combine_data.sh data/${train_set} data/train_worn data/train_gss_uall data/train_u400k  data/train_gss_multiarray_all
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 8 ]; then
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
   # lets us use more jobs for decoding etc.
   for dset in ${train_set}; do
@@ -267,13 +273,13 @@ fi
 # Now make 13-dim MFCC features. We use 13-dim fetures for GMM-HMM systems.
 ##################################################################################
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 9 ]; then
   # Now make MFCC features.
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
   echo "$0:  make features..."
   for x in ${train_set}; do
-    steps/make_mfcc.sh --nj 60 --cmd "$train_cmd" data/$x
+    steps/make_mfcc.sh --nj 100 --cmd "$train_cmd" data/$x
     steps/compute_cmvn_stats.sh data/$x
     utils/fix_data_dir.sh data/$x
   done
@@ -284,19 +290,19 @@ fi
 # generating lattices for training the chain model
 ###################################################################################
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 10 ]; then
   # make a subset for monophone training
   utils/subset_data_dir.sh --shortest data/${train_set} 100000 data/${train_set}_100kshort
   utils/subset_data_dir.sh data/${train_set}_100kshort 30000 data/${train_set}_30kshort
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 11 ]; then
   # Starting basic training on MFCC features
   steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
 		      data/${train_set}_30kshort data/lang_nosp exp/mono
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 12 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang_nosp exp/mono exp/mono_ali
 
@@ -304,7 +310,7 @@ if [ $stage -le 10 ]; then
 			2500 30000 data/${train_set} data/lang_nosp exp/mono_ali exp/tri1
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 13 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang_nosp exp/tri1 exp/tri1_ali
 
@@ -313,7 +319,7 @@ if [ $stage -le 11 ]; then
 fi
 
 LM=data/srilm/best_3gram.gz
-if [ $stage -le 12 ]; then
+if [ $stage -le 14 ]; then
   # Now we compute the pronunciation and silence probabilities from training data,
   # and re-create the lang directory.
   steps/get_prons.sh --cmd "$train_cmd" data/${train_set} data/lang_nosp exp/tri2
@@ -330,7 +336,7 @@ if [ $stage -le 12 ]; then
 		data/lang_tmp $LM data/local/dict_nosp/lexicon.txt data/lang
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 15 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/tri2 exp/tri2_ali
 
@@ -342,7 +348,7 @@ fi
 # Perform data cleanup for training data.
 #######################################################################
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 16 ]; then
   # The following script cleans the data and produces cleaned data
   steps/cleanup/clean_and_segment_data.sh --nj ${nj} --cmd "$train_cmd" \
     --segmentation-opts "--min-segment-length 0.3 --min-new-segment-length 0.6" \
@@ -354,7 +360,7 @@ fi
 # skipping decoding here and performing it in step 16
 ##########################################################################
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 17 ]; then
   # chain TDNN
   local/chain/run_cnn_tdnn.sh --nj ${nj} \
     --stage 13 \
@@ -368,7 +374,7 @@ fi
 # enhancement, fixes test sets performs feature extraction and 2 stage decoding
 ##########################################################################
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 18 ]; then
   local/decode.sh --stage 1 \
     --enhancement $enhancement \
     --train_set "$train_set"
