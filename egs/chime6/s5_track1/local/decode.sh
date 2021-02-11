@@ -118,35 +118,35 @@ fi
 # beamforming.
 #######################################################################
 
-if [ $stage -le 1 ] && [[ ${enhancement} == *beamformit* ]]; then
-  # Beamforming using reference arrays
-  # enhanced WAV directory
-  enhanced_dir=enhan
-  dereverb_dir=${PWD}/wav/wpe/
-  for dset in dev eval; do
-    for mictype in u01 u02 u03 u04 u05 u06; do
-      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 20G" \
-               ${audio_dir}/${dset} \
-               ${dereverb_dir}/${dset} \
-               ${mictype}
-    done
-  done
-
-  for dset in dev eval; do
-    for mictype in u01 u02 u03 u04 u05 u06; do
-      local/run_beamformit.sh --cmd "$train_cmd" \
-                      ${dereverb_dir}/${dset} \
-                      ${enhanced_dir}/${dset}_${enhancement}_${mictype} \
-                      ${mictype}
-    done
-  done
-
-  for dset in dev eval; do
-    local/prepare_data.sh --mictype ref "$PWD/${enhanced_dir}/${dset}_${enhancement}_u0*" \
-                      ${json_dir}/${dset} data/${dset}_${enhancement}
-  done
-fi
-
+#if [ $stage -le 1 ] && [[ ${enhancement} == *beamformit* ]]; then
+#  # Beamforming using reference arrays
+#  # enhanced WAV directory
+#  enhanced_dir=enhan
+#  dereverb_dir=${PWD}/wav/wpe/
+##  for dset in dev eval; do
+##    for mictype in u01 u02 u03 u04 u05 u06; do
+##      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 20G" \
+##               ${audio_dir}/${dset} \
+##               ${dereverb_dir}/${dset} \
+##               ${mictype}
+##    done
+##  done
+##
+##  for dset in dev eval; do
+##    for mictype in u01 u02 u03 u04 u05 u06; do
+##      local/run_beamformit.sh --cmd "$train_cmd" \
+##                      ${dereverb_dir}/${dset} \
+##                      ${enhanced_dir}/${dset}_${enhancement}_${mictype} \
+##                      ${mictype}
+##    done
+##  done
+#
+##  for dset in dev eval; do
+##    local/prepare_data.sh --mictype ref "$PWD/${enhanced_dir}/${dset}_${enhancement}_u0*" \
+##                      ${json_dir}/${dset} data/${dset}_${enhancement}
+##  done
+#fi
+#exit
 # In GSS enhancement, we do not have array information in utterance ID
 if [ $stage -le 2 ] && [[ ${enhancement} == *gss* ]]; then
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
@@ -226,7 +226,7 @@ if [ $stage -le 3 ]; then
 
   for data in $test_sets; do
     (
-      local/nnet3/decode.sh --affix 2stage --pass2-decode-opts "--min-active 1000" \
+      local/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --frames-per-chunk 150 --nj $decode_nj \
         --ivector-dir exp/nnet3${nnet3_affix} \
@@ -248,6 +248,6 @@ if [ $stage -le 4 ]; then
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_for_submit.sh --enhancement $enhancement --json $json_dir \
-      --dev exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_dev_${enhancement}_2stage \
-      --eval exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_eval_${enhancement}_2stage
+      --dev exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_dev_${enhancement} \
+      --eval exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_eval_${enhancement}
 fi

@@ -120,7 +120,7 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *gss* ]]; then
   utils/fix_data_dir.sh data/eval_gss_multiarray
   utils/validate_data_dir.sh --no-feats data/eval_gss_multiarray || exit 1
 fi
-exit
+
 #######################################################################
 # Prepare the dev and eval data with dereverberation (WPE) and
 # beamforming.

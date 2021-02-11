@@ -11,6 +11,7 @@ nj=4
 multiarray=outer_array_mics
 bss_iterations=5
 context_samples=160000
+reference_array=
 . utils/parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
@@ -53,6 +54,8 @@ fi
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || \
   { echo "Could not make absolute '$enhanced_dir'" && exit 1; }
 
+#echo $reference_array
+echo $session_id
 $cmd JOB=1:$nj $log_dir/log/enhance_${session_id}.JOB.log \
   cd pb_chime5/ '&&' \
   $miniconda_dir/bin/python -m pb_chime5.scripts.kaldi_run with \
