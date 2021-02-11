@@ -37,7 +37,7 @@ set -e # exit on error
 
 # chime5 main directory path
 # please change the path accordingly
-chime5_corpus=/export/corpora4/CHiME5
+chime5_corpus=/export/corpora5/CHiME5
 # chime6 data directories, which are generated from ${chime5_corpus},
 # to synchronize audio files across arrays and modify the annotation (JSON) file accordingly
 chime6_corpus=${PWD}/CHiME6
@@ -122,7 +122,7 @@ if [ $stage -le 3 ]; then
   grep -v -e "^P11_S03" -e "^P52_S19" -e "^P53_S24" -e "^P54_S24" data/train_worn_org/text > data/train_worn/text
   utils/fix_data_dir.sh data/train_worn
 fi
-
+exit
 if [ $stage -le 4 ]; then
   echo "$0:  enhance data with gss ..."
   if [ ! -d pb_chime5/ ]; then
@@ -140,158 +140,116 @@ if [ $stage -le 4 ]; then
   fi
 fi
 
-if [ $stage -le 5 ]; then
-  # we are not using S12 since GSS fails for some utterence for this session
-  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
-    local/run_gss.sh \
-      --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
-      --context_samples $context_samples \
-      ${dset} \
-      ${enhanced_dir}_$context_samples \
-      ${enhanced_dir}_$context_samples || exit 1
-  done
-
-  local/prepare_data.sh --mictype gss ${enhanced_dir}_$context_samples/audio/train ${json_dir}/train data/train_gss_multiarray_$context_samples
-  utils/fix_data_dir.sh data/train_gss_multiarray_$context_samples
-  utils/validate_data_dir.sh --no-feats data/train_gss_multiarray_$context_samples || exit 1
-fi
 
 if [ $stage -le 5 ]; then
   echo "$0:  enhance data with gss ..."
+  # multi-array GSS with 24 microphones
   # we are not using S12 since GSS fails for some utterence for this session
-  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
-    local/run_gss.sh \
-      --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
-      --multiarray $multiarray \
-      ${dset} \
-      ${enhanced_dir}_$multiarray \
-      ${enhanced_dir}_$multiarray || exit 1
-  done
+  multiarray=True
+#  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
+#    local/run_gss.sh \
+#      --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
+#      --multiarray $multiarray \
+#      ${dset} \
+#      ${enhanced_dir}_$multiarray \
+#      ${enhanced_dir}_$multiarray || exit 1
+#  done
 
   local/prepare_data.sh --mictype gss ${enhanced_dir}_$multiarray/audio/train ${json_dir}/train data/train_gss_multiarray_$multiarray
   utils/fix_data_dir.sh data/train_gss_multiarray_$multiarray
   utils/validate_data_dir.sh --no-feats data/train_gss_multiarray_$multiarray || exit 1
 
-  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
-    local/run_gss.sh \
-      --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
-      --bss_iterations $bss_iterations \
-      ${dset} \
-      ${enhanced_dir}_$bss_iterations \
-      ${enhanced_dir}_$bss_iterations || exit 1
-  done
-
-  local/prepare_data.sh --mictype gss ${enhanced_dir}_$bss_iterations/audio/train ${json_dir}/train data/train_gss_multiarray_$bss_iterations
-  utils/fix_data_dir.sh data/train_gss_multiarray_$bss_iterations
-  utils/validate_data_dir.sh --no-feats data/train_gss_multiarray_$bss_iterations || exit 1
-
-  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
-    local/run_gss.sh \
-      --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
-      ${dset} \
-      ${enhanced_dir} \
-      ${enhanced_dir} || exit 1
-  done
+  # multi-array GSS with 12 microphones
+#  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
+#    local/run_gss.sh \
+#      --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
+#      ${dset} \
+#      ${enhanced_dir} \
+#      ${enhanced_dir} || exit 1
+#  done
 
   local/prepare_data.sh --mictype gss ${enhanced_dir}/audio/train ${json_dir}/train data/train_gss_multiarray
   utils/fix_data_dir.sh data/train_gss_multiarray
   utils/validate_data_dir.sh --no-feats data/train_gss_multiarray || exit 1
+
+  # multi-array GSS with 6 microphones
+  multiarray='first_array_mics'
+#  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
+#    local/run_gss.sh \
+#      --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
+#      --multiarray $multiarray \
+#      ${dset} \
+#      ${enhanced_dir}_$multiarray \
+#      ${enhanced_dir}_$multiarray || exit 1
+#  done
+
+  local/prepare_data.sh --mictype gss ${enhanced_dir}_$multiarray/audio/train ${json_dir}/train data/train_gss_multiarray_$multiarray
+  utils/fix_data_dir.sh data/train_gss_multiarray_$multiarray
+  utils/validate_data_dir.sh --no-feats data/train_gss_multiarray_$multiarray || exit 1
 fi
 
 if [ $stage -le 6 ]; then
+  # single-array GSS in-place with 4 microphones (using 4 copies u01, u02, u05, u06)
   multiarray=False
   reference_array=U01
-  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S24; do
-    local/run_gss.sh \
-      --cmd "$train_cmd" --nj 120 \
-      --multiarray $multiarray \
-      --reference_array $reference_array \
-      ${dset} \
-      ${enhanced_dir}_$reference_array \
-      ${enhanced_dir}_$reference_array || exit 1
-  done
+#  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S24; do
+#    local/run_gss.sh \
+#      --cmd "$train_cmd" --nj 120 \
+#      --multiarray $multiarray \
+#      --reference_array $reference_array \
+#      ${dset} \
+#      ${enhanced_dir}_$reference_array \
+#      ${enhanced_dir}_$reference_array || exit 1
+#  done
 
   local/prepare_data.sh --mictype gss ${enhanced_dir}_$reference_array/audio/train ${json_dir}/train data/train_gss_$reference_array
   utils/fix_data_dir.sh data/train_gss_$reference_array
   utils/validate_data_dir.sh --no-feats data/train_gss_$reference_array || exit 1
 
   reference_array=U02
-  for dset in S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S24; do
-    local/run_gss.sh \
-      --cmd "$train_cmd" --nj 120 \
-      --multiarray $multiarray --reference_array $reference_array \
-      ${dset} \
-      ${enhanced_dir}_$reference_array \
-      ${enhanced_dir}_$reference_array || exit 1
-  done
+#  for dset in S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S24; do
+#    local/run_gss.sh \
+#      --cmd "$train_cmd" --nj 120 \
+#      --multiarray $multiarray --reference_array $reference_array \
+#      ${dset} \
+#      ${enhanced_dir}_$reference_array \
+#      ${enhanced_dir}_$reference_array || exit 1
+#  done
 
   local/prepare_data.sh --mictype gss ${enhanced_dir}_$reference_array/audio/train ${json_dir}/train data/train_gss_$reference_array
   utils/fix_data_dir.sh data/train_gss_$reference_array
   utils/validate_data_dir.sh --no-feats data/train_gss_$reference_array || exit 1
 
   reference_array=U05
-  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S24; do
-    local/run_gss.sh \
-      --cmd "$train_cmd" --nj 120 \
-      --multiarray $multiarray --reference_array $reference_array \
-      ${dset} \
-      ${enhanced_dir}_$reference_array \
-      ${enhanced_dir}_$reference_array || exit 1
-  done
+#  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S24; do
+#    local/run_gss.sh \
+#      --cmd "$train_cmd" --nj 120 \
+#      --multiarray $multiarray --reference_array $reference_array \
+#      ${dset} \
+#      ${enhanced_dir}_$reference_array \
+#      ${enhanced_dir}_$reference_array || exit 1
+#  done
 
   local/prepare_data.sh --mictype gss ${enhanced_dir}_$reference_array/audio/train ${json_dir}/train data/train_gss_$reference_array
   utils/fix_data_dir.sh data/train_gss_$reference_array
   utils/validate_data_dir.sh --no-feats data/train_gss_$reference_array || exit 1
 
   reference_array=U06
-  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S19 S20 S22 S23 S24; do
-    local/run_gss.sh \
-      --cmd "$train_cmd" --nj 120 \
-      --multiarray $multiarray --reference_array $reference_array \
-      ${dset} \
-      ${enhanced_dir}_$reference_array \
-      ${enhanced_dir}_$reference_array || exit 1
-  done
+#  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S19 S20 S22 S23 S24; do
+#    local/run_gss.sh \
+#      --cmd "$train_cmd" --nj 120 \
+#      --multiarray $multiarray --reference_array $reference_array \
+#      ${dset} \
+#      ${enhanced_dir}_$reference_array \
+#      ${enhanced_dir}_$reference_array || exit 1
+#  done
 
   local/prepare_data.sh --mictype gss ${enhanced_dir}_$reference_array/audio/train ${json_dir}/train data/train_gss_$reference_array
   utils/fix_data_dir.sh data/train_gss_$reference_array
   utils/validate_data_dir.sh --no-feats data/train_gss_$reference_array || exit 1
 fi
-
-if [ $stage -le 7 ]; then
-  echo "$0:  enhance data..."
-  if [ ! -d pb_chime5/ ]; then
-    local/install_pb_chime5.sh
-  fi
-
-  if [ ! -f pb_chime5/cache/chime6.json ]; then
-    (
-    cd pb_chime5
-    miniconda_dir=$HOME/miniconda3/
-    export PATH=$miniconda_dir/bin:$PATH
-    export CHIME6_DIR=$chime6_corpus
-    make cache/chime6.json
-    )
-  fi
-
-  multiarray='first_array_mics'
-  # we are not using S12 since GSS fails for some utterence for this session
-  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
-    local/run_gss.sh \
-      --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
-      --multiarray $multiarray \
-      ${dset} \
-      ${enhanced_dir}_$multiarray \
-      ${enhanced_dir}_$multiarray || exit 1
-  done
-
-  local/prepare_data.sh --mictype gss ${enhanced_dir}_$multiarray/audio/train ${json_dir}/train data/train_gss_multiarray_$multiarray
-  utils/fix_data_dir.sh data/train_gss_multiarray_$multiarray
-  utils/validate_data_dir.sh --no-feats data/train_gss_multiarray_$multiarray || exit 1
-fi
-
 exit
-if [ $stage -le 5 ]; then
+if [ $stage -le 7 ]; then
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
   utils/combine_data.sh data/${train_set} data/train_worn data/train_uall data/train_gss_multiarray
 
