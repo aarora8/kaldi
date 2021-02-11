@@ -122,7 +122,7 @@ if [ $stage -le 3 ]; then
   grep -v -e "^P11_S03" -e "^P52_S19" -e "^P53_S24" -e "^P54_S24" data/train_worn_org/text > data/train_worn/text
   utils/fix_data_dir.sh data/train_worn
 fi
-exit
+
 if [ $stage -le 4 ]; then
   echo "$0:  enhance data with gss ..."
   if [ ! -d pb_chime5/ ]; then
@@ -140,7 +140,7 @@ if [ $stage -le 4 ]; then
   fi
 fi
 
-
+enhanced_dir=/export/c12/aarora8/CHiME_gss/enhanced_multiarray
 if [ $stage -le 5 ]; then
   echo "$0:  enhance data with gss ..."
   # multi-array GSS with 24 microphones
