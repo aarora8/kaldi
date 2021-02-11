@@ -96,18 +96,18 @@ if [ $stage -le 1 ]; then
   done
 fi
 
-if [ $stage -le 2 ]; then
-  echo "$0:  train lm ..."
-  local/prepare_dict.sh data/local/dict_nosp
-
-  utils/prepare_lang.sh \
-    data/local/dict_nosp "<unk>" data/local/lang_nosp data/lang_nosp
-
-  local/train_lms_srilm.sh \
-    --train-text data/train_worn/text --dev-text data/dev_worn/text \
-    --oov-symbol "<unk>" --words-file data/lang_nosp/words.txt \
-    data/ data/srilm
-fi
+#if [ $stage -le 2 ]; then
+#  echo "$0:  train lm ..."
+#  local/prepare_dict.sh data/local/dict_nosp
+#
+#  utils/prepare_lang.sh \
+#    data/local/dict_nosp "<unk>" data/local/lang_nosp data/lang_nosp
+#
+#  local/train_lms_srilm.sh \
+#    --train-text data/train_worn/text --dev-text data/dev_worn/text \
+#    --oov-symbol "<unk>" --words-file data/lang_nosp/words.txt \
+#    data/ data/srilm
+#fi
 
 ##########################################################################################
 ## In stages 3 to 8, we augment and fix train data for our training purpose. point source
@@ -123,22 +123,22 @@ if [ $stage -le 3 ]; then
   utils/fix_data_dir.sh data/train_worn
 fi
 
-if [ $stage -le 4 ]; then
-  echo "$0:  enhance data with gss ..."
-  if [ ! -d pb_chime5/ ]; then
-    local/install_pb_chime5.sh
-  fi
-
-  if [ ! -f pb_chime5/cache/chime6.json ]; then
-    (
-    cd pb_chime5
-    miniconda_dir=$HOME/miniconda3/
-    export PATH=$miniconda_dir/bin:$PATH
-    export CHIME6_DIR=$chime6_corpus
-    make cache/chime6.json
-    )
-  fi
-fi
+#if [ $stage -le 4 ]; then
+#  echo "$0:  enhance data with gss ..."
+#  if [ ! -d pb_chime5/ ]; then
+#    local/install_pb_chime5.sh
+#  fi
+#
+#  if [ ! -f pb_chime5/cache/chime6.json ]; then
+#    (
+#    cd pb_chime5
+#    miniconda_dir=$HOME/miniconda3/
+#    export PATH=$miniconda_dir/bin:$PATH
+#    export CHIME6_DIR=$chime6_corpus
+#    make cache/chime6.json
+#    )
+#  fi
+#fi
 
 enhanced_dir=/export/c12/aarora8/CHiME_gss/enhanced_multiarray
 if [ $stage -le 5 ]; then
@@ -252,14 +252,6 @@ exit
 if [ $stage -le 7 ]; then
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
   utils/combine_data.sh data/${train_set} data/train_worn data/train_uall data/train_gss_multiarray
-
-  # only use left channel for worn mic recognition
-  # you can use both left and right channels for training
-  for dset in train dev; do
-    utils/copy_data_dir.sh data/${dset}_worn data/${dset}_worn_stereo
-    grep "\.L-" data/${dset}_worn_stereo/text > data/${dset}_worn/text
-    utils/fix_data_dir.sh data/${dset}_worn
-  done
 fi
 
 if [ $stage -le 6 ]; then

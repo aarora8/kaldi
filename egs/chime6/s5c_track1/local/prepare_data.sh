@@ -147,4 +147,5 @@ cut -f 1 -d ' ' $dir/text | \
 utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
 
 # Check that data dirs are okay!
+utils/fix_data_dir.sh $dir
 utils/validate_data_dir.sh --no-feats $dir || exit 1
