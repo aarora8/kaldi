@@ -99,18 +99,19 @@ if [ $stage -le 2 ]; then
     utils/validate_data_dir.sh --no-feats data/train_${mictype} || exit 1
   done
 fi
-#if [ $stage -le 3 ]; then
-#  echo "$0:  train lm ..."
-#  local/prepare_dict.sh data/local/dict_nosp
-#
-#  utils/prepare_lang.sh \
-#    data/local/dict_nosp "<unk>" data/local/lang_nosp data/lang_nosp
-#
-#  local/train_lms_srilm.sh \
-#    --train-text data/train_worn/text --dev-text data/dev_worn/text \
-#    --oov-symbol "<unk>" --words-file data/lang_nosp/words.txt \
-#    data/ data/srilm
-#fi
+
+if [ $stage -le 3 ]; then
+  echo "$0:  train lm ..."
+  local/prepare_dict.sh data/local/dict_nosp
+
+  utils/prepare_lang.sh \
+    data/local/dict_nosp "<unk>" data/local/lang_nosp data/lang_nosp
+
+  local/train_lms_srilm.sh \
+    --train-text data/train_worn/text --dev-text data/dev_worn/text \
+    --oov-symbol "<unk>" --words-file data/lang_nosp/words.txt \
+    data/ data/srilm
+fi
 
 ##########################################################################################
 ## In stages 3 to 8, we augment and fix train data for our training purpose. point source
@@ -261,7 +262,7 @@ if [ $stage -le 8 ]; then
 
   utils/combine_data.sh data/${train_set} data/train_worn data/train_gss_uall data/train_u400k  data/train_gss_multiarray_all
 fi
-exit
+
 if [ $stage -le 9 ]; then
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
   # lets us use more jobs for decoding etc.
