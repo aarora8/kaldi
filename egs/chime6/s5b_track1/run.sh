@@ -13,7 +13,7 @@ stage=0
 nnet_stage=-10
 decode_stage=1
 decode_only=false
-num_data_reps=4
+num_data_reps=1
 foreground_snrs="20:10:15:5:0"
 background_snrs="20:10:15:5:0"
 enhancement=gss # gss or beamformit
@@ -124,7 +124,39 @@ if [ $stage -le 4 ]; then
   utils/fix_data_dir.sh data/train_worn
 fi
 
-#if [ $stage -le 5 ]; then
+if [ $stage -le 5 ]; then
+  local/extract_noises.py $chime5_corpus/audio/train $chime5_corpus/transcriptions/train \
+    local/distant_audio_list distant_noises
+  local/make_noise_list.py distant_noises > distant_noise_list
+
+  noise_list=distant_noise_list
+  
+  if [ ! -d RIRS_NOISES/ ]; then
+    # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
+    wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
+    unzip rirs_noises.zip
+  fi
+
+  # This is the config for the system using simulated RIRs and point-source noises
+  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
+  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
+  rvb_opts+=(--noise-set-parameters $noise_list)
+
+  steps/data/reverberate_data_dir.py \
+    "${rvb_opts[@]}" \
+    --prefix "rev" \
+    --foreground-snrs $foreground_snrs \
+    --background-snrs $background_snrs \
+    --speech-rvb-probability 1 \
+    --pointsource-noise-addition-probability 1 \
+    --isotropic-noise-addition-probability 1 \
+    --num-replications $num_data_reps \
+    --max-noises-per-minute 1 \
+    --source-sampling-rate 16000 \
+    data/train_worn data/train_worn_rvb
+fi
+
+#if [ $stage -le 6 ]; then
 #  echo "$0:  enhance data with gss ..."
 #  if [ ! -d pb_chime5/ ]; then
 #    local/install_pb_chime5.sh
@@ -142,7 +174,7 @@ fi
 #fi
 
 enhanced_dir=/export/c12/aarora8/CHiME_gss/enhanced_multiarray
-if [ $stage -le 6 ]; then
+if [ $stage -le 7 ]; then
   echo "$0:  enhance data with gss ..."
 
   # multi-array GSS with 24 microphones
@@ -199,16 +231,16 @@ if [ $stage -le 6 ]; then
   utils/validate_data_dir.sh --no-feats data/train_gss_multiarray_$bss_iterations || exit 1
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
   utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
 
   utils/combine_data.sh data/train_gss_multiarray_all data/train_gss_multiarray data/train_gss_multiarray_True data/train_gss_multiarray_$context_samples data/train_gss_multiarray_$bss_iterations
 
-  utils/combine_data.sh data/${train_set} data/train_worn data/train_u400k  data/train_gss_multiarray_all
+  utils/combine_data.sh data/${train_set} data/train_worn data/train_worn_rvb data/train_u400k  data/train_gss_multiarray_all
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
   # lets us use more jobs for decoding etc.
   for dset in ${train_set}; do
@@ -221,7 +253,7 @@ fi
 # Now make 13-dim MFCC features. We use 13-dim fetures for GMM-HMM systems.
 ##################################################################################
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   # Now make MFCC features.
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
@@ -238,19 +270,19 @@ fi
 # generating lattices for training the chain model
 ###################################################################################
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   # make a subset for monophone training
   utils/subset_data_dir.sh --shortest data/${train_set} 100000 data/${train_set}_100kshort
   utils/subset_data_dir.sh data/${train_set}_100kshort 30000 data/${train_set}_30kshort
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 12 ]; then
   # Starting basic training on MFCC features
   steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
 		      data/${train_set}_30kshort data/lang_nosp exp/mono
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang_nosp exp/mono exp/mono_ali
 
@@ -258,7 +290,7 @@ if [ $stage -le 12 ]; then
 			2500 30000 data/${train_set} data/lang_nosp exp/mono_ali exp/tri1
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 14 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang_nosp exp/tri1 exp/tri1_ali
 
@@ -267,7 +299,7 @@ if [ $stage -le 13 ]; then
 fi
 
 LM=data/srilm/best_3gram.gz
-if [ $stage -le 14 ]; then
+if [ $stage -le 15 ]; then
   # Now we compute the pronunciation and silence probabilities from training data,
   # and re-create the lang directory.
   steps/get_prons.sh --cmd "$train_cmd" data/${train_set} data/lang_nosp exp/tri2
@@ -284,7 +316,7 @@ if [ $stage -le 14 ]; then
 		data/lang_tmp $LM data/local/dict_nosp/lexicon.txt data/lang
 fi
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 16 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/tri2 exp/tri2_ali
 
@@ -296,7 +328,7 @@ fi
 # Perform data cleanup for training data.
 #######################################################################
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 17 ]; then
   # The following script cleans the data and produces cleaned data
   steps/cleanup/clean_and_segment_data.sh --nj ${nj} --cmd "$train_cmd" \
     --segmentation-opts "--min-segment-length 0.3 --min-new-segment-length 0.6" \
@@ -308,7 +340,7 @@ fi
 # skipping decoding here and performing it in step 16
 ##########################################################################
 
-if [ $stage -le 17 ]; then
+if [ $stage -le 18 ]; then
   # chain TDNN
   local/chain/run_cnn_tdnn.sh --nj ${nj} \
     --stage 13 \
@@ -322,7 +354,7 @@ fi
 # enhancement, fixes test sets performs feature extraction and 2 stage decoding
 ##########################################################################
 
-if [ $stage -le 18 ]; then
+if [ $stage -le 19 ]; then
   local/decode.sh --stage 1 \
     --enhancement $enhancement \
     --train_set "$train_set"
