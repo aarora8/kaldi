@@ -34,7 +34,7 @@ set -e # exit on error
 
 # chime5 main directory path
 # please change the path accordingly
-chime5_corpus=/export/corpora4/CHiME5
+chime5_corpus=/export/corpora5/CHiME5
 # chime6 data directories, which are generated from ${chime5_corpus},
 # to synchronize audio files across arrays and modify the annotation (JSON) file accordingly
 chime6_corpus=${PWD}/CHiME6
@@ -259,7 +259,7 @@ if [ $stage -le 10 ]; then
   # want to store MFCC features.
   echo "$0:  make features..."
   for x in ${train_set}; do
-    steps/make_mfcc.sh --nj 60 --cmd "$train_cmd" data/$x
+    steps/make_mfcc.sh --nj 100 --cmd "$train_cmd" data/$x
     steps/compute_cmvn_stats.sh data/$x
     utils/fix_data_dir.sh data/$x
   done
