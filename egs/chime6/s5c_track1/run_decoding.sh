@@ -79,14 +79,8 @@ train_set=train_worn_simu_u400k
 
 if [ $stage -le 1 ]; then
   echo "$0:  prepare data..."
-  # skip u03 and u04 as they are missing
-  for mictype in worn u01 u02 u05 u06; do
-    local/prepare_data.sh --mictype ${mictype} \
-        ${audio_dir}/train ${json_dir}/train data/train_${mictype}
-    utils/validate_data_dir.sh --no-feats data/train_${mictype} || exit 1
-  done
   # dev worn is needed for the LM part
-  for dataset in dev; do
+  for dataset in train dev; do
     for mictype in worn; do
       local/prepare_data.sh --mictype ${mictype} \
           ${audio_dir}/${dataset} ${json_dir}/${dataset} \
@@ -96,7 +90,16 @@ if [ $stage -le 1 ]; then
   done
 fi
 
-#if [ $stage -le 2 ]; then
+if [ $stage -le 2 ]; then
+  echo "$0:  prepare data..."
+  # skip u03 and u04 as they are missing
+  for mictype in u01 u02 u05 u06; do
+    local/prepare_data.sh --mictype ${mictype} \
+        ${audio_dir}/train ${json_dir}/train data/train_${mictype}
+    utils/validate_data_dir.sh --no-feats data/train_${mictype} || exit 1
+  done
+fi
+#if [ $stage -le 3 ]; then
 #  echo "$0:  train lm ..."
 #  local/prepare_dict.sh data/local/dict_nosp
 #
@@ -115,7 +118,7 @@ fi
 ## its augmentation and all the worn set utterances in train.
 ##########################################################################################
 #
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   # remove possibly bad sessions (P11_S03, P52_S19, P53_S24, P54_S24)
   # see http://spandh.dcs.shef.ac.uk/chime_challenge/data.html for more details
   utils/copy_data_dir.sh data/train_worn data/train_worn_org # back up
@@ -123,7 +126,7 @@ if [ $stage -le 3 ]; then
   utils/fix_data_dir.sh data/train_worn
 fi
 
-#if [ $stage -le 4 ]; then
+#if [ $stage -le 5 ]; then
 #  echo "$0:  enhance data with gss ..."
 #  if [ ! -d pb_chime5/ ]; then
 #    local/install_pb_chime5.sh
@@ -141,7 +144,7 @@ fi
 #fi
 
 enhanced_dir=/export/c12/aarora8/CHiME_gss/enhanced_multiarray
-if [ $stage -le 5 ]; then
+if [ $stage -le 6 ]; then
   echo "$0:  enhance data with gss ..."
   # multi-array GSS with 24 microphones
   # we are not using S12 since GSS fails for some utterence for this session
@@ -155,10 +158,9 @@ if [ $stage -le 5 ]; then
 #      ${enhanced_dir}_$multiarray || exit 1
 #  done
 
-  local/prepare_data.sh --mictype gss ${enhanced_dir}_$multiarray/audio/train ${json_dir}/train data/train_gss_multiarray_$multiarray
+  local/prepare_data.sh --mictype gss --arrayid True ${enhanced_dir}_$multiarray/audio/train ${json_dir}/train data/train_gss_multiarray_$multiarray
   utils/fix_data_dir.sh data/train_gss_multiarray_$multiarray
   utils/validate_data_dir.sh --no-feats data/train_gss_multiarray_$multiarray || exit 1
-
   # multi-array GSS with 12 microphones
 #  for dset in S03 S04 S05 S06 S07 S08 S13 S16 S17 S18 S19 S20 S22 S23 S24; do
 #    local/run_gss.sh \
@@ -168,7 +170,7 @@ if [ $stage -le 5 ]; then
 #      ${enhanced_dir} || exit 1
 #  done
 
-  local/prepare_data.sh --mictype gss ${enhanced_dir}/audio/train ${json_dir}/train data/train_gss_multiarray
+  local/prepare_data.sh --mictype gss --arrayid default ${enhanced_dir}/audio/train ${json_dir}/train data/train_gss_multiarray
   utils/fix_data_dir.sh data/train_gss_multiarray
   utils/validate_data_dir.sh --no-feats data/train_gss_multiarray || exit 1
 
@@ -183,12 +185,12 @@ if [ $stage -le 5 ]; then
 #      ${enhanced_dir}_$multiarray || exit 1
 #  done
 
-  local/prepare_data.sh --mictype gss ${enhanced_dir}_$multiarray/audio/train ${json_dir}/train data/train_gss_multiarray_$multiarray
+  local/prepare_data.sh --mictype gss --arrayid first_array_mics ${enhanced_dir}_$multiarray/audio/train ${json_dir}/train data/train_gss_multiarray_$multiarray
   utils/fix_data_dir.sh data/train_gss_multiarray_$multiarray
   utils/validate_data_dir.sh --no-feats data/train_gss_multiarray_$multiarray || exit 1
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 7 ]; then
   # single-array GSS in-place with 4 microphones (using 4 copies u01, u02, u05, u06)
   multiarray=False
   reference_array=U01
@@ -202,7 +204,7 @@ if [ $stage -le 6 ]; then
 #      ${enhanced_dir}_$reference_array || exit 1
 #  done
 
-  local/prepare_data.sh --mictype gss ${enhanced_dir}_$reference_array/audio/train ${json_dir}/train data/train_gss_$reference_array
+  local/prepare_data.sh --mictype gss --arrayid U01  ${enhanced_dir}_$reference_array/audio/train ${json_dir}/train data/train_gss_$reference_array
   utils/fix_data_dir.sh data/train_gss_$reference_array
   utils/validate_data_dir.sh --no-feats data/train_gss_$reference_array || exit 1
 
@@ -216,7 +218,7 @@ if [ $stage -le 6 ]; then
 #      ${enhanced_dir}_$reference_array || exit 1
 #  done
 
-  local/prepare_data.sh --mictype gss ${enhanced_dir}_$reference_array/audio/train ${json_dir}/train data/train_gss_$reference_array
+  local/prepare_data.sh --mictype gss --arrayid U02 ${enhanced_dir}_$reference_array/audio/train ${json_dir}/train data/train_gss_$reference_array
   utils/fix_data_dir.sh data/train_gss_$reference_array
   utils/validate_data_dir.sh --no-feats data/train_gss_$reference_array || exit 1
 
@@ -230,7 +232,7 @@ if [ $stage -le 6 ]; then
 #      ${enhanced_dir}_$reference_array || exit 1
 #  done
 
-  local/prepare_data.sh --mictype gss ${enhanced_dir}_$reference_array/audio/train ${json_dir}/train data/train_gss_$reference_array
+  local/prepare_data.sh --mictype gss --arrayid U05 ${enhanced_dir}_$reference_array/audio/train ${json_dir}/train data/train_gss_$reference_array
   utils/fix_data_dir.sh data/train_gss_$reference_array
   utils/validate_data_dir.sh --no-feats data/train_gss_$reference_array || exit 1
 
@@ -244,12 +246,12 @@ if [ $stage -le 6 ]; then
 #      ${enhanced_dir}_$reference_array || exit 1
 #  done
 
-  local/prepare_data.sh --mictype gss ${enhanced_dir}_$reference_array/audio/train ${json_dir}/train data/train_gss_$reference_array
+  local/prepare_data.sh --mictype gss --arrayid U06 ${enhanced_dir}_$reference_array/audio/train ${json_dir}/train data/train_gss_$reference_array
   utils/fix_data_dir.sh data/train_gss_$reference_array
   utils/validate_data_dir.sh --no-feats data/train_gss_$reference_array || exit 1
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
   utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
 
@@ -259,8 +261,8 @@ if [ $stage -le 7 ]; then
 
   utils/combine_data.sh data/${train_set} data/train_worn data/train_gss_uall data/train_u400k  data/train_gss_multiarray_all
 fi
-
-if [ $stage -le 8 ]; then
+exit
+if [ $stage -le 9 ]; then
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
   # lets us use more jobs for decoding etc.
   for dset in ${train_set}; do
@@ -273,7 +275,7 @@ fi
 # Now make 13-dim MFCC features. We use 13-dim fetures for GMM-HMM systems.
 ##################################################################################
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   # Now make MFCC features.
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
@@ -290,13 +292,13 @@ fi
 # generating lattices for training the chain model
 ###################################################################################
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   # make a subset for monophone training
   utils/subset_data_dir.sh --shortest data/${train_set} 100000 data/${train_set}_100kshort
   utils/subset_data_dir.sh data/${train_set}_100kshort 30000 data/${train_set}_30kshort
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 12 ]; then
   # Starting basic training on MFCC features
   steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
 		      data/${train_set}_30kshort data/lang_nosp exp/mono
