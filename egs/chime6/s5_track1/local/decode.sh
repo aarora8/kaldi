@@ -34,15 +34,10 @@ context_samples=240000
 
 set -e # exit on error
 
-# chime5 main directory path
-# please change the path accordingly
 chime5_corpus=/export/corpora4/CHiME5
-# chime6 data directories, which are generated from ${chime5_corpus},
-# to synchronize audio files across arrays and modify the annotation (JSON) file accordingly
 chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
 audio_dir=${chime6_corpus}/audio
-
 enhanced_dir=enhanced
 if [[ ${enhancement} == *gss* ]]; then
   enhanced_dir=${enhanced_dir}_multiarray
@@ -58,6 +53,115 @@ enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 test_sets="dev_${enhancement}"
 
 ./local/check_tools.sh || exit 1
+
+if [ $stage -le 0 ]; then
+  echo "$0:  prepare data..."
+  # dev worn is needed for the LM part
+  for dataset in dev eval; do
+    for mictype in u01 u02 u05 u06; do
+      local/prepare_data.sh --mictype ${mictype} \
+          ${audio_dir}/${dataset} ${json_dir}/${dataset} \
+          data/${dataset}_${mictype}
+      utils/validate_data_dir.sh --no-feats data/${dataset}_${mictype}
+    done
+  done
+fi
+
+if [ $stage -le 1 ]; then
+  echo "$0:  enhance data..."
+  if [ ! -d pb_chime5/ ]; then
+    local/install_pb_chime5.sh
+  fi
+
+  if [ ! -f pb_chime5/cache/chime6.json ]; then
+    (
+    cd pb_chime5
+    miniconda_dir=$HOME/miniconda3/
+    export PATH=$miniconda_dir/bin:$PATH
+    export CHIME6_DIR=$chime6_corpus
+    make cache/chime6.json
+    )
+  fi
+
+  for dset in dev eval; do
+    for reference_array in u01 u02 u05 u06; do
+      local/run_gss.sh \
+        --cmd "$train_cmd" --nj 100 \
+        --multiarray False \
+         --reference_array $reference_array \
+        ${dset} \
+        ${enhanced_dir}_$reference_array \
+        ${enhanced_dir}_$reference_array || exit 1
+    done
+  done
+
+  for dset in dev eval; do
+    for reference_array in u01 u02 u05 u06; do
+      local/prepare_data.sh --mictype gss --arrayid $reference_array \
+        ${enhanced_dir}_$reference_array/audio/${dset} ${json_dir}/${dset} \
+        data/${dset}_gss_$reference_array
+      utils/fix_data_dir.sh data/${dset}_gss_$reference_array
+      utils/validate_data_dir.sh --no-feats data/${dset}_gss_$reference_array || exit 1
+    done
+  done
+fi
+
+if [ $stage -le 1 ]; then
+  echo "$0:  enhance data..."
+  for dset in dev eval; do
+      local/run_gss.sh \
+        --cmd "$train_cmd" --nj 100 \
+        --multiarray first_array_mics \
+        ${dset} ${enhanced_dir}_first_array_mics \
+        ${enhanced_dir}_first_array_mics || exit 1
+    done
+
+  for dset in dev eval; do
+      local/prepare_data.sh --mictype gss --arrayid first_array_mics \
+        ${enhanced_dir}_first_array_mics/audio/${dset} ${json_dir}/${dset} \
+        data/${dset}_gss_first_array_mics
+      utils/fix_data_dir.sh data/${dset}_gss_first_array_mics
+      utils/validate_data_dir.sh --no-feats data/${dset}_gss_first_array_mics
+  done
+fi
+
+if [ $stage -le 2 ]; then
+  echo "$0:  enhance data..."
+  for dset in dev eval; do
+      local/run_gss.sh \
+        --cmd "$train_cmd" --nj 100 \
+        --multiarray outer_array_mics \
+        ${dset} ${enhanced_dir}_outer_array_mics \
+        ${enhanced_dir}_outer_array_mics || exit 1
+    done
+
+  for dset in dev eval; do
+      local/prepare_data.sh --mictype gss --arrayid outer_array_mics \
+        ${enhanced_dir}_outer_array_mics/audio/${dset} ${json_dir}/${dset} \
+        data/${dset}_gss_outer_array_mics
+      utils/fix_data_dir.sh data/${dset}_gss_outer_array_mics
+      utils/validate_data_dir.sh --no-feats data/${dset}_gss_outer_array_mics
+  done
+fi
+
+if [ $stage -le 3 ]; then
+  echo "$0:  enhance data..."
+  for dset in dev eval; do
+      local/run_gss.sh \
+        --cmd "$train_cmd" --nj 100 \
+        --multiarray True \
+        ${dset} ${enhanced_dir}_True \
+        ${enhanced_dir}_True || exit 1
+    done
+
+  for dset in dev eval; do
+      local/prepare_data.sh --mictype gss --arrayid True \
+        ${enhanced_dir}_True/audio/${dset} ${json_dir}/${dset} \
+        data/${dset}_gss_True
+      utils/fix_data_dir.sh data/${dset}_gss_True
+      utils/validate_data_dir.sh --no-feats data/${dset}_gss_True
+  done
+fi
 
 if [ $stage -le 2 ] && [[ ${enhancement} == *gss* ]]; then
   for dset in ${test_sets}; do

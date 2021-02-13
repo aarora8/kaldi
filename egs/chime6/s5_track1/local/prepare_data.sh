@@ -6,6 +6,7 @@
 # Begin configuration section.
 mictype=worn # worn, ref or others
 cleanup=true
+arrayid=u01
 # End configuration section
 . ./utils/parse_options.sh  # accept options.. you can run this run.sh with the
 
@@ -22,7 +23,7 @@ fi
 
 set -e -o pipefail
 
-adir=$1
+adir=$(utils/make_absolute.sh "$1")
 jdir=$2
 dir=$3
 
@@ -86,8 +87,8 @@ elif [ $mictype == "ref" ]; then
   # following command provide the argument for grep to extract only reference arrays
   grep `cut -f 1 -d"-" $dir/text | awk -F"_" '{print $2 "_" $3}' | sed -e "s/\.ENH//" | sort | uniq | sed -e "s/^/ -e /" | tr "\n" " "` $dir/wav.flist > $dir/wav.flist2
   paste -d" " \
-	<(awk -F "/" '{print $NF}' $dir/wav.flist2 | sed -e "s/\.wav/.ENH/") \
-	$dir/wav.flist2 | sort > $dir/wav.scp
+  <(awk -F "/" '{print $NF}' $dir/wav.flist2 | sed -e "s/\.wav/.ENH/") \
+  $dir/wav.flist2 | sort > $dir/wav.scp
 elif [ $mictype == "gss" ]; then
   find -L $adir -name  "P[0-9]*_S[0-9]*.wav" | \
     perl -ne '{
@@ -99,8 +100,12 @@ elif [ $mictype == "gss" ]; then
       print "$f $path\n";
     }' | sort > $dir/wav.scp
 
-  cat $dir/text.orig | sort > $dir/text
-else
+  cat $dir/wav.scp | sort > $dir/wav.scp.orig
+  perl -ne "s/-/.${arrayid}-/;print;" $dir/wav.scp.orig | sort > $dir/wav.scp
+  # P05_S02_U02_KITCHEN-0004060-0004382 to P05_S02_U02_KITCHEN.ENH-0004060-0004382
+  #cat $dir/text.orig | sort > $dir/text
+  perl -ne "s/-/.${arrayid}-/;print;" $dir/text.orig | sort > $dir/text
+elif [ $mictype == "u01" ] || [ $mictype == "u02" ] || [ $mictype == "u05" ] || [ $mictype == "u06" ]; then
   # array mic case
   # convert the filenames to wav.scp format, use the basename of the file
   # as a the wav.scp key
@@ -119,7 +124,6 @@ else
     for($i=1; $i<=4; $i++) {
       ($x=$l)=~ s/-/.CH\Q$i\E-/;
       print $x;}' $dir/text.orig | sort > $dir/text
-
 fi
 $cleanup && rm -f $dir/text.* $dir/wav.scp.* $dir/wav.flist
 
@@ -145,6 +149,6 @@ cut -f 1 -d ' ' $dir/text | \
   perl -ne 'chomp;$utt=$_;s/_.*//;print "$utt $_\n";' > $dir/utt2spk
 
 utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
-
 # Check that data dirs are okay!
+utils/fix_data_dir.sh $dir
 utils/validate_data_dir.sh --no-feats $dir || exit 1
