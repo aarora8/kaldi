@@ -21,6 +21,10 @@ enhancement=gss        # for a new enhancement method,
 
 # training data
 train_set=train_worn_simu_u400k
+#GSS parameters
+multiarray=True
+bss_iterations=20
+context_samples=240000
 # End configuration section
 . ./utils/parse_options.sh
 
@@ -51,7 +55,7 @@ if [[ ${enhancement} == *beamformit* ]]; then
 fi
 
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
-test_sets="dev_${enhancement} eval_${enhancement}"
+test_sets="dev_${enhancement}"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
@@ -99,18 +103,22 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *gss* ]]; then
     )
   fi
 
-  for dset in dev eval; do
+  for dset in eval; do
     local/run_gss.sh \
       --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
+      --multiarray $multiarray --bss_iterations $bss_iterations \
+      --context_samples $context_samples \
       ${dset} \
       ${enhanced_dir} \
       ${enhanced_dir} || exit 1
   done
 
-  for dset in dev eval; do
+  for dset in eval; do
     local/prepare_data.sh --mictype gss ${enhanced_dir}/audio/${dset} \
       ${json_dir}/${dset} data/${dset}_${enhancement} || exit 1
   done
+  utils/fix_data_dir.sh data/eval_gss_multiarray
+  utils/validate_data_dir.sh --no-feats data/eval_gss_multiarray || exit 1
 fi
 
 #######################################################################
@@ -118,35 +126,35 @@ fi
 # beamforming.
 #######################################################################
 
-#if [ $stage -le 1 ] && [[ ${enhancement} == *beamformit* ]]; then
-#  # Beamforming using reference arrays
-#  # enhanced WAV directory
-#  enhanced_dir=enhan
-#  dereverb_dir=${PWD}/wav/wpe/
-##  for dset in dev eval; do
-##    for mictype in u01 u02 u03 u04 u05 u06; do
-##      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 20G" \
-##               ${audio_dir}/${dset} \
-##               ${dereverb_dir}/${dset} \
-##               ${mictype}
-##    done
-##  done
-##
-##  for dset in dev eval; do
-##    for mictype in u01 u02 u03 u04 u05 u06; do
-##      local/run_beamformit.sh --cmd "$train_cmd" \
-##                      ${dereverb_dir}/${dset} \
-##                      ${enhanced_dir}/${dset}_${enhancement}_${mictype} \
-##                      ${mictype}
-##    done
-##  done
-#
-##  for dset in dev eval; do
-##    local/prepare_data.sh --mictype ref "$PWD/${enhanced_dir}/${dset}_${enhancement}_u0*" \
-##                      ${json_dir}/${dset} data/${dset}_${enhancement}
-##  done
-#fi
-#exit
+if [ $stage -le 1 ] && [[ ${enhancement} == *beamformit* ]]; then
+  # Beamforming using reference arrays
+  # enhanced WAV directory
+  enhanced_dir=enhan
+  dereverb_dir=${PWD}/wav/wpe/
+  for dset in dev eval; do
+    for mictype in u01 u02 u03 u04 u05 u06; do
+      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 20G" \
+               ${audio_dir}/${dset} \
+               ${dereverb_dir}/${dset} \
+               ${mictype}
+    done
+  done
+
+  for dset in dev eval; do
+    for mictype in u01 u02 u03 u04 u05 u06; do
+      local/run_beamformit.sh --cmd "$train_cmd" \
+                      ${dereverb_dir}/${dset} \
+                      ${enhanced_dir}/${dset}_${enhancement}_${mictype} \
+                      ${mictype}
+    done
+  done
+
+  for dset in dev eval; do
+    local/prepare_data.sh --mictype ref "$PWD/${enhanced_dir}/${dset}_${enhancement}_u0*" \
+                      ${json_dir}/${dset} data/${dset}_${enhancement}
+  done
+fi
+
 # In GSS enhancement, we do not have array information in utterance ID
 if [ $stage -le 2 ] && [[ ${enhancement} == *gss* ]]; then
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
@@ -191,63 +199,13 @@ if [ $stage -le 2 ] && [[ ${enhancement} == *beamformit* ]]; then
   done
 fi
 
-##########################################################################
-# DECODING: we perform 2 stage decoding.
-##########################################################################
-
-nnet3_affix=_${train_set}_cleaned_rvb
-lm_suffix=
-
 if [ $stage -le 3 ]; then
-  # First the options that are passed through to run_ivector_common.sh
-  # (some of which are also used in this script directly).
-
-  # The rest are configs specific to this script.  Most of the parameters
-  # are just hardcoded at this level, in the commands below.
-  echo "$0: decode data..."
-  affix=1b   # affix for the TDNN directory name
-  tree_affix=
-  tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
-  dir=exp/chain${nnet3_affix}/tdnn${affix}_sp
-
-  # training options
-  # training chunk-options
-  chunk_width=140,100,160
-  # we don't need extra left/right context for TDNN systems.
-  chunk_left_context=0
-  chunk_right_context=0
-  
-  utils/mkgraph.sh \
-      --self-loop-scale 1.0 data/lang${lm_suffix}/ \
-      $tree_dir $tree_dir/graph${lm_suffix} || exit 1;
-
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  rm $dir/.error 2>/dev/null || true
-
   for data in $test_sets; do
-    (
-      local/nnet3/decode.sh \
-        --acwt 1.0 --post-decode-acwt 10.0 \
-        --frames-per-chunk 150 --nj $decode_nj \
-        --ivector-dir exp/nnet3${nnet3_affix} \
-        data/${data} data/lang${lm_suffix} \
-        $tree_dir/graph${lm_suffix} \
-        exp/chain${nnet3_affix}/tdnn${affix}_sp
-    ) || touch $dir/.error &
+    if [ ! -s data/${data}_hires/feats.scp ]; then
+      utils/copy_data_dir.sh data/$data data/${data}_hires
+      steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 --cmd "$train_cmd" data/${data}_hires
+      steps/compute_cmvn_stats.sh data/${data}_hires
+      utils/fix_data_dir.sh data/${data}_hires
+    fi
   done
-  wait
-  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
-fi
-
-##########################################################################
-# Scoring: here we obtain wer per session per location and overall WER
-##########################################################################
-
-if [ $stage -le 4 ]; then
-  # final scoring to get the official challenge result
-  # please specify both dev and eval set directories so that the search parameters
-  # (insertion penalty and language model weight) will be tuned using the dev set
-  local/score_for_submit.sh --enhancement $enhancement --json $json_dir \
-      --dev exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_dev_${enhancement} \
-      --eval exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_eval_${enhancement}
 fi
