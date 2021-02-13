@@ -258,7 +258,6 @@ fi
 ##########################################################################
 
 if [ $stage -le 15 ]; then
-  # chain TDNN
   local/chain/run_cnn_tdnn.sh --nj ${nj} \
     --stage $nnet_stage \
     --train-set ${train_set}_cleaned \
