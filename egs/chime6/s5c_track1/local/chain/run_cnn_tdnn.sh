@@ -254,8 +254,17 @@ if [ $stage -le 15 ]; then
     $tree_dir $tree_dir/graph${lm_suffix} || exit 1;
 fi
 
+enhancement=gss_multiarray
 test_sets="dev_${enhancement} eval_${enhancement}"
+chime6_corpus=${PWD}/CHiME6
+json_dir=${chime6_corpus}/transcriptions
+
 if [ $stage -le 16 ]; then
+  local/decode.sh --stage 1 \
+    --enhancement $enhancement
+fi
+
+if [ $stage -le 17 ]; then
   for data in $test_sets; do
     if [ ! -s data/${data}_hires/feats.scp ]; then
       utils/copy_data_dir.sh data/$data data/${data}_hires
@@ -266,7 +275,7 @@ if [ $stage -le 16 ]; then
   done
 fi
 
-if [ $stage -le 17 ]; then
+if [ $stage -le 18 ]; then
   echo "Extracting i-vectors, stage 1"
   for data in $test_sets; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
@@ -275,7 +284,7 @@ if [ $stage -le 17 ]; then
   done
 fi
 
-if [ $stage -le 18 ]; then
+if [ $stage -le 19 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for data in $test_sets; do
     (
@@ -289,4 +298,9 @@ if [ $stage -le 18 ]; then
   wait
 fi
 
+if [ $stage -le 19 ]; then
+  local/score_for_submit.sh --enhancement $enhancement --json $json_dir \
+      --dev ${dir}/decode_dev_${enhancement} \
+      --eval ${dir}/decode_eval_${enhancement}
+fi
 exit 0;
