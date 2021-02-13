@@ -254,22 +254,39 @@ if [ $stage -le 15 ]; then
     $tree_dir $tree_dir/graph${lm_suffix} || exit 1;
 fi
 
-if [ $stage -le 16 ] && [[ $skip_decoding == "false" ]]; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  rm $dir/.error 2>/dev/null || true
+test_sets="dev_${enhancement} eval_${enhancement}"
+if [ $stage -le 16 ]; then
+  for data in $test_sets; do
+    if [ ! -s data/${data}_hires/feats.scp ]; then
+      utils/copy_data_dir.sh data/$data data/${data}_hires
+      steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd "$train_cmd" data/${data}_hires
+      steps/compute_cmvn_stats.sh data/${data}_hires
+      utils/fix_data_dir.sh data/${data}_hires
+    fi
+  done
+fi
 
+if [ $stage -le 17 ]; then
+  echo "Extracting i-vectors, stage 1"
+  for data in $test_sets; do
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
+      data/${data}_hires exp/nnet3${nnet3_affix}/extractor \
+      exp/nnet3${nnet3_affix}/ivectors_${data_set}${ivector_affix}
+  done
+fi
+
+if [ $stage -le 18 ]; then
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for data in $test_sets; do
     (
-      steps/nnet3/decode.sh \
+      steps/nnet3/decode.sh --nj $nj --cmd "$decode_cmd" \
           --acwt 1.0 --post-decode-acwt 10.0 \
           --frames-per-chunk $frames_per_chunk \
-          --nj 8 --cmd "$decode_cmd"  --num-threads 4 \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-          $tree_dir/graph${lm_suffix} data/${data}_hires ${dir}/decode${lm_suffix}_${data} || exit 1
-    ) || touch $dir/.error &
+          $tree_dir/graph data/${data}_hires ${dir}/decode_${data} || exit 1
+    )
   done
   wait
-  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
 
 exit 0;

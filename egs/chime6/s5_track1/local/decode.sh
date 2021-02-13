@@ -14,7 +14,7 @@
 
 # Begin configuration section.
 decode_nj=20
-gss_nj=50
+gss_nj=60
 stage=0
 enhancement=gss        # for a new enhancement method,
                        # change this variable and stage 4

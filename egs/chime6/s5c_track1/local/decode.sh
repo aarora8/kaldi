@@ -120,7 +120,7 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *gss* ]]; then
   utils/fix_data_dir.sh data/eval_gss_multiarray
   utils/validate_data_dir.sh --no-feats data/eval_gss_multiarray || exit 1
 fi
-exit
+
 #######################################################################
 # Prepare the dev and eval data with dereverberation (WPE) and
 # beamforming.
@@ -234,8 +234,8 @@ if [ $stage -le 3 ]; then
 
   for data in $test_sets; do
     (
-      local/nnet3/decode.sh --affix 2stage --pass2-decode-opts "--min-active 1000" \
-        --acwt 1.0 --post-decode-acwt 10.0  --stage 1 \
+      local/nnet3/decode.sh \
+        --acwt 1.0 --post-decode-acwt 10.0 \
         --frames-per-chunk 150 --nj $decode_nj \
         --ivector-dir exp/nnet3${nnet3_affix} \
         data/${data} data/lang${lm_suffix} \
@@ -257,6 +257,6 @@ if [ $stage -le 4 ]; then
   # (insertion penalty and language model weight) will be tuned using the dev set
   affix=1b_cnn
   local/score_for_submit.sh --enhancement $enhancement --json $json_dir \
-      --dev exp/chain${nnet3_affix}/tdnn${affix}_sp/decode${lm_suffix}_dev_${enhancement}_2stage \
-      --eval exp/chain${nnet3_affix}/tdnn${affix}_sp/decode${lm_suffix}_eval_${enhancement}_2stage
+      --dev exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_dev_${enhancement} \
+      --eval exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_eval_${enhancement}
 fi

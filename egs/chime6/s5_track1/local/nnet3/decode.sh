@@ -27,6 +27,8 @@ ivector_dir=exp/nnet3
 # decode opts
 pass2_decode_opts="--min-active 1000"
 lattice_beam=8
+extra_left_context=0 # change for (B)LSTM
+extra_right_context=0 # change for BLSTM
 frames_per_chunk=50 # change for (B)LSTM
 acwt=1.0 # important to change this when using chain models
 post_decode_acwt=10.0 # important to change this when using chain models
