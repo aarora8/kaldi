@@ -39,19 +39,10 @@ chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
 audio_dir=${chime6_corpus}/audio
 enhanced_dir=enhanced
-if [[ ${enhancement} == *gss* ]]; then
-  enhanced_dir=${enhanced_dir}_multiarray
-  enhancement=${enhancement}_multiarray
-fi
-
-if [[ ${enhancement} == *beamformit* ]]; then
-  enhanced_dir=${enhanced_dir}
-  enhancement=${enhancement}
-fi
-
+enhanced_dir=${enhanced_dir}_multiarray
+enhancement=${enhancement}_multiarray
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
-test_sets="dev_${enhancement}"
-
+test_sets="dev_${enhancement} eval_${enhancement}"
 ./local/check_tools.sh || exit 1
 
 if [ $stage -le 0 ]; then
@@ -105,7 +96,7 @@ if [ $stage -le 1 ]; then
     done
   done
 fi
-
+exit
 if [ $stage -le 2 ]; then
   echo "$0:  enhance data..."
   for dset in dev eval; do
