@@ -265,17 +265,6 @@ if [ $stage -le 16 ]; then
 fi
 
 if [ $stage -le 17 ]; then
-  for data in $test_sets; do
-    if [ ! -s data/${data}_hires/feats.scp ]; then
-      utils/copy_data_dir.sh data/$data data/${data}_hires
-      steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd "$train_cmd" data/${data}_hires
-      steps/compute_cmvn_stats.sh data/${data}_hires
-      utils/fix_data_dir.sh data/${data}_hires
-    fi
-  done
-fi
-
-if [ $stage -le 18 ]; then
   echo "Extracting i-vectors, stage 1"
   for data in $test_sets; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
@@ -284,7 +273,7 @@ if [ $stage -le 18 ]; then
   done
 fi
 
-if [ $stage -le 19 ]; then
+if [ $stage -le 18 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for data in $test_sets; do
     (

@@ -198,3 +198,14 @@ if [ $stage -le 2 ] && [[ ${enhancement} == *beamformit* ]]; then
     utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit_fix data/${dset}
   done
 fi
+
+if [ $stage -le 3 ]; then
+  for data in $test_sets; do
+    if [ ! -s data/${data}_hires/feats.scp ]; then
+      utils/copy_data_dir.sh data/$data data/${data}_hires
+      steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 --cmd "$train_cmd" data/${data}_hires
+      steps/compute_cmvn_stats.sh data/${data}_hires
+      utils/fix_data_dir.sh data/${data}_hires
+    fi
+  done
+fi
