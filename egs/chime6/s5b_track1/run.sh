@@ -125,12 +125,12 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  local/extract_noises.py $chime5_corpus/audio/train $chime5_corpus/transcriptions/train \
+ 
+  local/extract_noises.py $chime6_corpus/audio/train $chime6_corpus/transcriptions/train \
     local/distant_audio_list distant_noises
   local/make_noise_list.py distant_noises > distant_noise_list
 
-  noise_list=distant_noise_list
-  
+  noise_list=distant_noise_list 
   if [ ! -d RIRS_NOISES/ ]; then
     # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
     wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
@@ -343,7 +343,7 @@ fi
 if [ $stage -le 18 ]; then
   # chain TDNN
   local/chain/run_cnn_tdnn.sh --nj ${nj} \
-    --stage 13 \
+    --stage 0 \
     --train-set ${train_set}_cleaned \
     --test-sets "$test_sets" \
     --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned_rvb

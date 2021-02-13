@@ -366,7 +366,7 @@ fi
 if [ $stage -le 17 ]; then
   # chain TDNN
   local/chain/run_cnn_tdnn.sh --nj ${nj} \
-    --stage 13 \
+    --stage 0 \
     --train-set ${train_set}_cleaned \
     --test-sets "$test_sets" \
     --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned_rvb
