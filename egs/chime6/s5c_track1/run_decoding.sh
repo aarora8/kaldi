@@ -350,37 +350,18 @@ fi
 #######################################################################
 # Perform data cleanup for training data.
 #######################################################################
-
 if [ $stage -le 16 ]; then
-  # The following script cleans the data and produces cleaned data
   steps/cleanup/clean_and_segment_data.sh --nj ${nj} --cmd "$train_cmd" \
     --segmentation-opts "--min-segment-length 0.3 --min-new-segment-length 0.6" \
     data/${train_set} data/lang exp/tri3 exp/tri3_cleaned data/${train_set}_cleaned
 fi
 
-##########################################################################
-# CHAIN MODEL TRAINING
-# skipping decoding here and performing it in step 16
-##########################################################################
-
 if [ $stage -le 17 ]; then
-  # chain TDNN
-  local/chain/run_cnn_tdnn.sh --nj ${nj} \
+  local/chain/run_cnn_tdnn.sh --nj 120 \
     --stage 0 \
     --train-set ${train_set}_cleaned \
     --test-sets "$test_sets" \
     --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned_rvb
-fi
-
-##########################################################################
-# DECODING is done in the local/decode.sh script. This script performs
-# enhancement, fixes test sets performs feature extraction and 2 stage decoding
-##########################################################################
-
-if [ $stage -le 18 ]; then
-  local/decode.sh --stage 1 \
-    --enhancement $enhancement \
-    --train_set "$train_set"
 fi
 
 exit 0;
