@@ -106,7 +106,7 @@ if [ $stage -le 1 ]; then
   done
 fi
 
-if [ $stage -le 1 ]; then
+if [ $stage -le 2 ]; then
   echo "$0:  enhance data..."
   for dset in dev eval; do
       local/run_gss.sh \
@@ -125,7 +125,7 @@ if [ $stage -le 1 ]; then
   done
 fi
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 3 ]; then
   echo "$0:  enhance data..."
   for dset in dev eval; do
       local/run_gss.sh \
@@ -144,7 +144,7 @@ if [ $stage -le 2 ]; then
   done
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   echo "$0:  enhance data..."
   for dset in dev eval; do
       local/run_gss.sh \
@@ -164,41 +164,26 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 2 ] && [[ ${enhancement} == *gss* ]]; then
-  for dset in ${test_sets}; do
-    utils/copy_data_dir.sh data/${dset} data/${dset}_orig
-  done
-
-  for dset in ${test_sets}; do
-    utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_orig data/${dset}
-  done
-fi
-
-if [ $stage -le 2 ] && [[ ${enhancement} == *beamformit* ]]; then
-  echo "$0: fix data..."
-  for dset in ${test_sets}; do
-    utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
-    mkdir -p data/${dset}_nosplit_fix
-    for f in segments text wav.scp; do
-      if [ -f data/${dset}_nosplit/$f ]; then
-        cp data/${dset}_nosplit/$f data/${dset}_nosplit_fix
-      fi
+  for dset in dev eval; do
+    for suffix in gss_True gss_outer_array_mics gss_first_array_mics gss_u01 gss_u02 gss_u03 gss_u04; do
+      utils/copy_data_dir.sh data/${dset}_${suffix} data/${dset}_${suffix}_orig
     done
-    awk -F "_" '{print $0 "_" $3}' data/${dset}_nosplit/utt2spk > data/${dset}_nosplit_fix/utt2spk
-    utils/utt2spk_to_spk2utt.pl data/${dset}_nosplit_fix/utt2spk > data/${dset}_nosplit_fix/spk2utt
   done
 
   for dset in ${test_sets}; do
-    utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit_fix data/${dset}
+    utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_${suffix}_orig data/${dset}_${suffix}
   done
 fi
 
 if [ $stage -le 3 ]; then
-  for data in $test_sets; do
-    if [ ! -s data/${data}_hires/feats.scp ]; then
-      utils/copy_data_dir.sh data/$data data/${data}_hires
-      steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 --cmd "$train_cmd" data/${data}_hires
-      steps/compute_cmvn_stats.sh data/${data}_hires
-      utils/fix_data_dir.sh data/${data}_hires
-    fi
+  for dset in dev eval; do
+    for suffix in gss_True gss_outer_array_mics gss_first_array_mics gss_u01 gss_u02 gss_u03 gss_u04; do
+      if [ ! -s data/${dset}_${suffix}_hires/feats.scp ]; then
+        utils/copy_data_dir.sh data/${dset}_${suffix} data/${dset}_${suffix}_hires
+        steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 --cmd "$train_cmd" data/${dset}_${suffix}_hires
+        steps/compute_cmvn_stats.sh data/${dset}_${suffix}_hires
+        utils/fix_data_dir.sh data/${dset}_${suffix}_hires
+      fi
+    done
   done
 fi

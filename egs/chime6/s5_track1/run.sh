@@ -273,7 +273,6 @@ fi
 if [ $stage -le 16 ]; then
   local/decode.sh --stage $decode_stage \
     --enhancement $enhancement \
-    --train_set "$train_set"
 fi
 
 exit 0;
