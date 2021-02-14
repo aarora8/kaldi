@@ -114,7 +114,7 @@ if [ $stage -le 1 ]; then
 
   enhanced_dir=/export/c12/aarora8/CHiME_gss/s5_track1/enhanced_multiarray
   for dset in dev eval; do
-    for reference_array in U01 U02 U06; do
+    for reference_array in U01 U02 U05 U06; do
       local/prepare_data.sh --mictype gss --arrayid $reference_array \
         ${enhanced_dir}_$reference_array/audio/${dset} ${json_dir}/${dset} \
         data/${dset}_gss_$reference_array
@@ -123,17 +123,38 @@ if [ $stage -le 1 ]; then
     done
   done
 fi
-exit
+
 if [ $stage -le 2 ]; then
   echo "$0:  enhance data..."
-  for dset in dev eval; do
-      local/run_gss.sh \
-        --cmd "$train_cmd" --nj 100 \
-        --multiarray first_array_mics \
-        ${dset} ${enhanced_dir}_first_array_mics \
-        ${enhanced_dir}_first_array_mics || exit 1
-    done
+#  for dset in dev eval; do
+#      local/run_gss.sh \
+#        --cmd "$train_cmd" --nj 100 \
+#        --multiarray False \
+#        ${dset} ${enhanced_dir}_reference \
+#        ${enhanced_dir}_reference || exit 1
+#    done
 
+  enhanced_dir=/export/c12/aarora8/CHiME_gss/s5d_track1/enhanced_multiarray
+  for dset in dev eval; do
+      local/prepare_data.sh --mictype gss --arrayid reference \
+        ${enhanced_dir}_reference/audio/${dset} ${json_dir}/${dset} \
+        data/${dset}_gss_reference
+      utils/fix_data_dir.sh data/${dset}_gss_reference
+      utils/validate_data_dir.sh --no-feats data/${dset}_gss_reference
+  done
+fi
+
+if [ $stage -le 3 ]; then
+  echo "$0:  enhance data..."
+#  for dset in dev eval; do
+#      local/run_gss.sh \
+#        --cmd "$train_cmd" --nj 100 \
+#        --multiarray first_array_mics \
+#        ${dset} ${enhanced_dir}_first_array_mics \
+#        ${enhanced_dir}_first_array_mics || exit 1
+#    done
+
+  enhanced_dir=/export/c12/aarora8/CHiME_gss/s5d_track1/enhanced_multiarray
   for dset in dev eval; do
       local/prepare_data.sh --mictype gss --arrayid first_array_mics \
         ${enhanced_dir}_first_array_mics/audio/${dset} ${json_dir}/${dset} \
@@ -143,7 +164,8 @@ if [ $stage -le 2 ]; then
   done
 fi
 
-if [ $stage -le 3 ]; then
+enhanced_dir=enhanced_multiarray
+if [ $stage -le 4 ]; then
   echo "$0:  enhance data..."
   for dset in dev eval; do
       local/run_gss.sh \
@@ -162,7 +184,7 @@ if [ $stage -le 3 ]; then
   done
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   echo "$0:  enhance data..."
   for dset in dev eval; do
       local/run_gss.sh \
@@ -180,7 +202,7 @@ if [ $stage -le 4 ]; then
       utils/validate_data_dir.sh --no-feats data/${dset}_gss_True
   done
 fi
-
+exit
 if [ $stage -le 2 ] && [[ ${enhancement} == *gss* ]]; then
   for dset in dev eval; do
     for suffix in gss_True gss_outer_array_mics gss_first_array_mics gss_u01 gss_u02 gss_u03 gss_u04; do
