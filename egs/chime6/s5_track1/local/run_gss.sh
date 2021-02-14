@@ -63,7 +63,6 @@ $cmd JOB=1:$nj $log_dir/log/enhance_${session_id}.JOB.log \
     storage_dir=$enhanced_dir \
     session_id=$session_id \
     job_id=JOB number_of_jobs=$nj \
-    reference_array=$reference_array \
     bss_iterations=$bss_iterations \
     context_samples=$context_samples \
     multiarray=$multiarray || exit 1
