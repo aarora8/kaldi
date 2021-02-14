@@ -100,7 +100,7 @@ if [ $stage -le 1 ]; then
     )
   fi
 
-  for dset in eval; do
+  for dset in dev eval; do
     for reference_array in U01 U02 U05 U06; do
       local/run_gss.sh \
         --cmd "$train_cmd" --nj 100 \
