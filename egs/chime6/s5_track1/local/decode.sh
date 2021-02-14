@@ -86,34 +86,35 @@ fi
 
 if [ $stage -le 1 ]; then
   echo "$0:  enhance data..."
-  if [ ! -d pb_chime5/ ]; then
-    local/install_pb_chime5.sh
-  fi
+#  if [ ! -d pb_chime5/ ]; then
+#    local/install_pb_chime5.sh
+#  fi
+#
+#  if [ ! -f pb_chime5/cache/chime6.json ]; then
+#    (
+#    cd pb_chime5
+#    miniconda_dir=$HOME/miniconda3/
+#    export PATH=$miniconda_dir/bin:$PATH
+#    export CHIME6_DIR=$chime6_corpus
+#    make cache/chime6.json
+#    )
+#  fi
+#
+#  for dset in dev eval; do
+#    for reference_array in U01 U02 U05 U06; do
+#      local/run_gss.sh \
+#        --cmd "$train_cmd" --nj 100 \
+#        --multiarray False \
+#         --reference_array $reference_array \
+#        ${dset} \
+#        ${enhanced_dir}_$reference_array \
+#        ${enhanced_dir}_$reference_array || exit 1
+#    done
+#  done
 
-  if [ ! -f pb_chime5/cache/chime6.json ]; then
-    (
-    cd pb_chime5
-    miniconda_dir=$HOME/miniconda3/
-    export PATH=$miniconda_dir/bin:$PATH
-    export CHIME6_DIR=$chime6_corpus
-    make cache/chime6.json
-    )
-  fi
-
+  enhanced_dir=/export/c12/aarora8/CHiME_gss/s5_track1/enhanced_multiarray
   for dset in dev eval; do
-    for reference_array in U01 U02 U05 U06; do
-      local/run_gss.sh \
-        --cmd "$train_cmd" --nj 100 \
-        --multiarray False \
-         --reference_array $reference_array \
-        ${dset} \
-        ${enhanced_dir}_$reference_array \
-        ${enhanced_dir}_$reference_array || exit 1
-    done
-  done
-
-  for dset in dev eval; do
-    for reference_array in U01 U02 U05 U06; do
+    for reference_array in U01 U02 U06; do
       local/prepare_data.sh --mictype gss --arrayid $reference_array \
         ${enhanced_dir}_$reference_array/audio/${dset} ${json_dir}/${dset} \
         data/${dset}_gss_$reference_array
