@@ -164,17 +164,17 @@ if [ $stage -le 3 ]; then
   done
 fi
 
-enhanced_dir=enhanced_multiarray
 if [ $stage -le 4 ]; then
   echo "$0:  enhance data..."
-  for dset in dev eval; do
-      local/run_gss.sh \
-        --cmd "$train_cmd" --nj 100 \
-        --multiarray outer_array_mics \
-        ${dset} ${enhanced_dir}_outer_array_mics \
-        ${enhanced_dir}_outer_array_mics || exit 1
-    done
+#  for dset in dev eval; do
+#      local/run_gss.sh \
+#        --cmd "$train_cmd" --nj 100 \
+#        --multiarray outer_array_mics \
+#        ${dset} ${enhanced_dir}_outer_array_mics \
+#        ${enhanced_dir}_outer_array_mics || exit 1
+#  done
 
+  enhanced_dir=/export/c12/aarora8/CHiME_gss/enhanced_multiarray
   for dset in dev eval; do
       local/prepare_data.sh --mictype gss --arrayid outer_array_mics \
         ${enhanced_dir}_outer_array_mics/audio/${dset} ${json_dir}/${dset} \
@@ -184,16 +184,18 @@ if [ $stage -le 4 ]; then
   done
 fi
 
+enhanced_dir=enhanced_multiarray
 if [ $stage -le 5 ]; then
   echo "$0:  enhance data..."
-  for dset in dev eval; do
-      local/run_gss.sh \
-        --cmd "$train_cmd" --nj 100 \
-        --multiarray True \
-        ${dset} ${enhanced_dir}_True \
-        ${enhanced_dir}_True || exit 1
-    done
+#  for dset in dev eval; do
+#      local/run_gss.sh \
+#        --cmd "$train_cmd" --nj 100 \
+#        --multiarray True \
+#        ${dset} ${enhanced_dir}_True \
+#        ${enhanced_dir}_True || exit 1
+#  done
 
+  enhanced_dir=/export/c12/aarora8/CHiME_gss/s5_track1/enhanced_multiarray
   for dset in dev eval; do
       local/prepare_data.sh --mictype gss --arrayid True \
         ${enhanced_dir}_True/audio/${dset} ${json_dir}/${dset} \
@@ -202,28 +204,48 @@ if [ $stage -le 5 ]; then
       utils/validate_data_dir.sh --no-feats data/${dset}_gss_True
   done
 fi
-exit
-if [ $stage -le 2 ] && [[ ${enhancement} == *gss* ]]; then
-  for dset in dev eval; do
-    for suffix in gss_True gss_outer_array_mics gss_first_array_mics gss_u01 gss_u02 gss_u03 gss_u04; do
-      utils/copy_data_dir.sh data/${dset}_${suffix} data/${dset}_${suffix}_orig
-    done
-  done
 
-  for dset in ${test_sets}; do
-    utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_${suffix}_orig data/${dset}_${suffix}
+if [ $stage -le 6 ]; then
+  for dset in dev eval; do
+    for suffix in gss_U01 gss_U02 gss_U06 gss_reference gss_first_array_mics gss_outer_array_mics; do
+      utils/copy_data_dir.sh data/${dset}_${suffix} data/${dset}_${suffix}_orig
+      utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_${suffix}_orig data/${dset}_${suffix}
+    done
   done
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 7 ]; then
   for dset in dev eval; do
-    for suffix in gss_True gss_outer_array_mics gss_first_array_mics gss_u01 gss_u02 gss_u03 gss_u04; do
+    for suffix in gss_U01 gss_U02 gss_U06 gss_reference gss_first_array_mics gss_outer_array_mics; do
       if [ ! -s data/${dset}_${suffix}_hires/feats.scp ]; then
         utils/copy_data_dir.sh data/${dset}_${suffix} data/${dset}_${suffix}_hires
         steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 --cmd "$train_cmd" data/${dset}_${suffix}_hires
         steps/compute_cmvn_stats.sh data/${dset}_${suffix}_hires
         utils/fix_data_dir.sh data/${dset}_${suffix}_hires
       fi
+    done
+  done
+fi
+
+chime6_corpus=${PWD}/CHiME6_new
+json_dir=${chime6_corpus}/transcriptions
+audio_dir=${chime6_corpus}/audio
+if [ $stage -le 8 ]; then
+  echo "$0:  prepare data..."
+  for dataset in eval; do
+    for mictype in worn; do
+      local/prepare_data.sh --mictype ${mictype} \
+          ${audio_dir}/${dataset} ${json_dir}/${dataset} \
+          data/${dataset}_${mictype}
+      utils/copy_data_dir.sh data/${dataset}_${mictype} data/${dataset}_${mictype}_stereo
+      grep "\.L-" data/${dataset}_${mictype}_stereo/text > data/${dataset}_${mictype}/text
+      utils/fix_data_dir.sh data/${dataset}_${mictype}
+      utils/copy_data_dir.sh data/${dataset}_${mictype} data/${dataset}_${mictype}_orig
+      utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dataset}_${mictype}_orig data/${dataset}_${mictype}
+      utils/copy_data_dir.sh data/${dataset}_${mictype} data/${dataset}_${mictype}_hires
+      steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 --cmd "$train_cmd" data/${dataset}_${mictype}_hires
+      steps/compute_cmvn_stats.sh data/${dataset}_${mictype}_hires
+      utils/fix_data_dir.sh data/${dataset}_${mictype}_hires
     done
   done
 fi
