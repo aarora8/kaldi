@@ -56,6 +56,32 @@ if [ $stage -le 0 ]; then
       utils/validate_data_dir.sh --no-feats data/${dataset}_${mictype}
     done
   done
+
+  for dataset in dev eval; do
+    for mictype in u01 u02 u05 u06; do
+      utils/copy_data_dir.sh data/${dataset}_${mictype} data/${dataset}_${mictype}_ch1
+      utils/copy_data_dir.sh data/${dataset}_${mictype} data/${dataset}_${mictype}_ch2
+      utils/copy_data_dir.sh data/${dataset}_${mictype} data/${dataset}_${mictype}_ch3
+      utils/copy_data_dir.sh data/${dataset}_${mictype} data/${dataset}_${mictype}_ch4
+ 
+      cp data/${dataset}_${mictype}_ch1/utt2spk data/${dataset}_${mictype}_ch1/utt2spk_temp
+      cp data/${dataset}_${mictype}_ch2/utt2spk data/${dataset}_${mictype}_ch2/utt2spk_temp
+      cp data/${dataset}_${mictype}_ch3/utt2spk data/${dataset}_${mictype}_ch3/utt2spk_temp
+      cp data/${dataset}_${mictype}_ch4/utt2spk data/${dataset}_${mictype}_ch4/utt2spk_temp
+
+      grep '.CH1-' data/${dataset}_${mictype}_ch1/utt2spk_temp > data/${dataset}_${mictype}_ch1/utt2spk
+      grep '.CH2-' data/${dataset}_${mictype}_ch2/utt2spk_temp > data/${dataset}_${mictype}_ch2/utt2spk
+      grep '.CH3-' data/${dataset}_${mictype}_ch3/utt2spk_temp > data/${dataset}_${mictype}_ch3/utt2spk
+      grep '.CH4-' data/${dataset}_${mictype}_ch4/utt2spk_temp > data/${dataset}_${mictype}_ch4/utt2spk
+
+      utils/fix_data_dir.sh data/${dataset}_${mictype}_ch1
+      utils/fix_data_dir.sh data/${dataset}_${mictype}_ch2
+      utils/fix_data_dir.sh data/${dataset}_${mictype}_ch3
+      utils/fix_data_dir.sh data/${dataset}_${mictype}_ch4
+
+      rm -r data/${dataset}_${mictype}
+    done
+  done
 fi
 
 if [ $stage -le 1 ]; then
@@ -74,8 +100,8 @@ if [ $stage -le 1 ]; then
     )
   fi
 
-  for dset in dev eval; do
-    for reference_array in u01 u02 u05 u06; do
+  for dset in eval; do
+    for reference_array in U01 U02 U05 U06; do
       local/run_gss.sh \
         --cmd "$train_cmd" --nj 100 \
         --multiarray False \
@@ -87,7 +113,7 @@ if [ $stage -le 1 ]; then
   done
 
   for dset in dev eval; do
-    for reference_array in u01 u02 u05 u06; do
+    for reference_array in U01 U02 U05 U06; do
       local/prepare_data.sh --mictype gss --arrayid $reference_array \
         ${enhanced_dir}_$reference_array/audio/${dset} ${json_dir}/${dset} \
         data/${dset}_gss_$reference_array

@@ -54,7 +54,7 @@ fi
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || \
   { echo "Could not make absolute '$enhanced_dir'" && exit 1; }
 
-#echo $reference_array
+echo $reference_array
 echo $session_id
 $cmd JOB=1:$nj $log_dir/log/enhance_${session_id}.JOB.log \
   cd pb_chime5/ '&&' \
