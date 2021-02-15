@@ -257,8 +257,6 @@ if [ $stage -le 15 ]; then
 fi
 
 test_sets="dev_${enhancement} eval_${enhancement}"
-chime6_corpus=${PWD}/CHiME6
-json_dir=${chime6_corpus}/transcriptions
 nnet3_affix=_train_worn_simu_u400k_cleaned_rvb
 affix=1b_cnn
 dir=exp/chain${nnet3_affix}/tdnn${affix}_sp
@@ -296,9 +294,4 @@ if [ $stage -le 19 ]; then
   head ${dir}/decode_dev_${enhancement}/scoring_kaldi/best_wer
   head ${dir}/decode_eval_${enhancement}/scoring_kaldi/best_wer
 fi
-#if [ $stage -le 19 ]; then
-#  local/score_for_submit.sh --enhancement $enhancement --json $json_dir \
-#      --dev ${dir}/decode_dev_${enhancement} \
-#      --eval ${dir}/decode_eval_${enhancement}
-#fi
 exit 0;
