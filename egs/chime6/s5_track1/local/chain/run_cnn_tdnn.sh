@@ -262,12 +262,8 @@ affix=1b_cnn
 dir=exp/chain${nnet3_affix}/tdnn${affix}_sp
 tree_dir=exp/chain${nnet3_affix}/tree_sp
 nj=50
-#if [ $stage -le 16 ]; then
-#  local/decode.sh --stage 1 \
-#    --enhancement $enhancement
-#fi
 
-if [ $stage -le 17 ]; then
+if [ $stage -le 16 ]; then
   echo "Extracting i-vectors"
   for data in $test_sets; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
@@ -276,7 +272,7 @@ if [ $stage -le 17 ]; then
   done
 fi
 
-if [ $stage -le 18 ]; then
+if [ $stage -le 17 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for data in $test_sets; do
     (
@@ -290,7 +286,7 @@ if [ $stage -le 18 ]; then
   wait
 fi
 
-if [ $stage -le 19 ]; then
+if [ $stage -le 18 ]; then
   head ${dir}/decode_dev_${enhancement}/scoring_kaldi/best_wer
   head ${dir}/decode_eval_${enhancement}/scoring_kaldi/best_wer
 fi

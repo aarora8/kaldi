@@ -123,7 +123,6 @@ if [ $stage -le 1 ]; then
       utils/validate_data_dir.sh --no-feats data/${dset}_gss_$reference_array || exit 1
     done
   done
-  exit
 fi
 
 if [ $stage -le 2 ]; then
@@ -186,17 +185,17 @@ if [ $stage -le 4 ]; then
   done
 fi
 
-enhanced_dir=enhanced_multiarray
 if [ $stage -le 5 ]; then
   echo "$0:  enhance data..."
-  for dset in dev eval; do
-      local/run_gss.sh \
-        --cmd "$train_cmd" --nj 90 \
-        --multiarray True \
-        ${dset} ${enhanced_dir}_True \
-        ${enhanced_dir}_True || exit 1
-  done
+#  for dset in dev eval; do
+#      local/run_gss.sh \
+#        --cmd "$train_cmd" --nj 100 \
+#        --multiarray True \
+#        ${dset} ${enhanced_dir}_True \
+#        ${enhanced_dir}_True || exit 1
+#  done
 
+  enhanced_dir=enhanced_multiarray
   #enhanced_dir=/export/c12/aarora8/CHiME_gss/s5_track1/enhanced_multiarray
   for dset in dev eval; do
       local/prepare_data.sh --mictype gss --arrayid True \
@@ -205,21 +204,13 @@ if [ $stage -le 5 ]; then
       utils/fix_data_dir.sh data/${dset}_gss_True
       utils/validate_data_dir.sh --no-feats data/${dset}_gss_True
   done
-  exit
 fi
 
 if [ $stage -le 6 ]; then
   for dset in dev eval; do
-    for suffix in gss_U01 gss_U02 gss_U04 gss_U06 gss_reference gss_first_array_mics gss_outer_array_mics; do
+    for suffix in gss_U01 gss_U02 gss_U04 gss_U06 gss_reference gss_first_array_mics gss_outer_array_mics gss_True; do
       utils/copy_data_dir.sh data/${dset}_${suffix} data/${dset}_${suffix}_orig
       utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_${suffix}_orig data/${dset}_${suffix}
-    done
-  done
-fi
-
-if [ $stage -le 7 ]; then
-  for dset in dev eval; do
-    for suffix in gss_U01 gss_U02 gss_U04 gss_U06 gss_reference gss_first_array_mics gss_outer_array_mics; do
       if [ ! -s data/${dset}_${suffix}_hires/feats.scp ]; then
         utils/copy_data_dir.sh data/${dset}_${suffix} data/${dset}_${suffix}_hires
         steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 --cmd "$train_cmd" data/${dset}_${suffix}_hires
@@ -233,7 +224,7 @@ fi
 chime6_corpus=${PWD}/CHiME6_new
 json_dir=${chime6_corpus}/transcriptions
 audio_dir=${chime6_corpus}/audio
-if [ $stage -le 8 ]; then
+if [ $stage -le 7 ]; then
   echo "$0:  prepare data..."
   for dataset in dev eval; do
     for mictype in worn; do
@@ -253,8 +244,8 @@ if [ $stage -le 8 ]; then
   done
 fi
 
-if [ $stage -le 9 ]; then
-  for suffix in gss_U01 gss_U02 gss_U04 gss_U06 gss_reference gss_first_array_mics gss_outer_array_mics; do
-    local/chain/run_cnn_tdnn.sh --stage 17 --enhancement $suffix
+if [ $stage -le 8 ]; then
+  for suffix in worn gss_U01 gss_U02 gss_U04 gss_U06 gss_reference gss_first_array_mics gss_outer_array_mics gss_True; do
+    local/chain/run_cnn_tdnn.sh --stage 16 --enhancement $suffix
   done
 fi
