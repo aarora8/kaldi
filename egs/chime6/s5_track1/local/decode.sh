@@ -187,15 +187,15 @@ fi
 enhanced_dir=enhanced_multiarray
 if [ $stage -le 5 ]; then
   echo "$0:  enhance data..."
-#  for dset in dev eval; do
-#      local/run_gss.sh \
-#        --cmd "$train_cmd" --nj 100 \
-#        --multiarray True \
-#        ${dset} ${enhanced_dir}_True \
-#        ${enhanced_dir}_True || exit 1
-#  done
+  for dset in dev eval; do
+      local/run_gss.sh \
+        --cmd "$train_cmd" --nj 90 \
+        --multiarray True \
+        ${dset} ${enhanced_dir}_True \
+        ${enhanced_dir}_True || exit 1
+  done
 
-  enhanced_dir=/export/c12/aarora8/CHiME_gss/s5_track1/enhanced_multiarray
+  #enhanced_dir=/export/c12/aarora8/CHiME_gss/s5_track1/enhanced_multiarray
   for dset in dev eval; do
       local/prepare_data.sh --mictype gss --arrayid True \
         ${enhanced_dir}_True/audio/${dset} ${json_dir}/${dset} \
@@ -203,6 +203,7 @@ if [ $stage -le 5 ]; then
       utils/fix_data_dir.sh data/${dset}_gss_True
       utils/validate_data_dir.sh --no-feats data/${dset}_gss_True
   done
+  exit
 fi
 
 if [ $stage -le 6 ]; then
@@ -232,7 +233,7 @@ json_dir=${chime6_corpus}/transcriptions
 audio_dir=${chime6_corpus}/audio
 if [ $stage -le 8 ]; then
   echo "$0:  prepare data..."
-  for dataset in eval; do
+  for dataset in dev eval; do
     for mictype in worn; do
       local/prepare_data.sh --mictype ${mictype} \
           ${audio_dir}/${dataset} ${json_dir}/${dataset} \
@@ -247,5 +248,11 @@ if [ $stage -le 8 ]; then
       steps/compute_cmvn_stats.sh data/${dataset}_${mictype}_hires
       utils/fix_data_dir.sh data/${dataset}_${mictype}_hires
     done
+  done
+fi
+
+if [ $stage -le 9 ]; then
+  for suffix in gss_U01 gss_U02 gss_U06 gss_reference gss_first_array_mics gss_outer_array_mics; do
+    local/chain/run_cnn_tdnn.sh --stage 17 --enhancement $suffix
   done
 fi

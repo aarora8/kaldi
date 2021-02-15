@@ -270,7 +270,7 @@ nj=50
 #fi
 
 if [ $stage -le 17 ]; then
-  echo "Extracting i-vectors, stage 1"
+  echo "Extracting i-vectors"
   for data in $test_sets; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
       data/${data}_hires exp/nnet3${nnet3_affix}/extractor \
