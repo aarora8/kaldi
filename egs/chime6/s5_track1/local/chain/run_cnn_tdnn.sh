@@ -57,6 +57,8 @@ remove_egs=true
 #decode options
 test_online_decoding=false  # if true, it will run the last decoding stage.
 skip_decoding=true
+
+enhancement=gss_first_array_mics
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -75,11 +77,11 @@ fi
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 11" if you have already
 # run those things.
-local/nnet3/run_ivector_common.sh --stage $stage \
-                                  --train-set $train_set \
-                                  --gmm $gmm \
-                                  --nnet3-affix "$nnet3_affix" || exit 1;
-
+#local/nnet3/run_ivector_common.sh --stage $stage \
+#                                  --train-set $train_set \
+#                                  --gmm $gmm \
+#                                  --nnet3-affix "$nnet3_affix" || exit 1;
+#
 # Problem: We have removed the "train_" prefix of our training set in
 # the alignment directory names! Bad!
 gmm_dir=exp/$gmm
@@ -91,10 +93,10 @@ train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
-for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-    $lores_train_data_dir/feats.scp; do
-  [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
-done
+#for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
+#    $lores_train_data_dir/feats.scp; do
+#  [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
+#done
 
 if [ $stage -le 10 ]; then
   echo "$0: creating lang directory $lang with chain-type topology"
@@ -254,22 +256,25 @@ if [ $stage -le 15 ]; then
     $tree_dir $tree_dir/graph${lm_suffix} || exit 1;
 fi
 
-enhancement=gss_multiarray
 test_sets="dev_${enhancement} eval_${enhancement}"
 chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
-
-if [ $stage -le 16 ]; then
-  local/decode.sh --stage 1 \
-    --enhancement $enhancement
-fi
+nnet3_affix=_train_worn_simu_u400k_cleaned_rvb
+affix=1b_cnn
+dir=exp/chain${nnet3_affix}/tdnn${affix}_sp
+tree_dir=exp/chain${nnet3_affix}/tree_sp
+nj=50
+#if [ $stage -le 16 ]; then
+#  local/decode.sh --stage 1 \
+#    --enhancement $enhancement
+#fi
 
 if [ $stage -le 17 ]; then
   echo "Extracting i-vectors, stage 1"
   for data in $test_sets; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
       data/${data}_hires exp/nnet3${nnet3_affix}/extractor \
-      exp/nnet3${nnet3_affix}/ivectors_${data_set}${ivector_affix}
+      exp/nnet3${nnet3_affix}/ivectors_${data}_hires
   done
 fi
 
@@ -288,8 +293,12 @@ if [ $stage -le 18 ]; then
 fi
 
 if [ $stage -le 19 ]; then
-  local/score_for_submit.sh --enhancement $enhancement --json $json_dir \
-      --dev ${dir}/decode_dev_${enhancement} \
-      --eval ${dir}/decode_eval_${enhancement}
+  head ${dir}/decode_dev_${enhancement}/scoring_kaldi/best_wer
+  head ${dir}/decode_eval_${enhancement}/scoring_kaldi/best_wer
 fi
+#if [ $stage -le 19 ]; then
+#  local/score_for_submit.sh --enhancement $enhancement --json $json_dir \
+#      --dev ${dir}/decode_dev_${enhancement} \
+#      --eval ${dir}/decode_eval_${enhancement}
+#fi
 exit 0;
