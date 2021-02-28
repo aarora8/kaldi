@@ -7,9 +7,8 @@
 # initialization commands
 . ./cmd.sh
 
-[ ! -L "steps" ] && ln -s ../../wsj/s5/steps
-
-[ ! -L "utils" ] && ln -s ../../wsj/s5/utils
+#[ ! -L "steps" ] && ln -s ../../wsj/s5/steps
+#[ ! -L "utils" ] && ln -s ../../wsj/s5/utils
 
 ###############################################################
 #                   Configuring the ASR pipeline
@@ -27,7 +26,7 @@ decode_nj=24    # number of parallel jobs to run for test during decoding
 # language model.
 if [ $stage -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   echo "Preparing data and training language models"
-  local/prepare_data.sh train test
+  #local/prepare_data.sh train test
   local/prepare_dict.sh
   utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
   local/prepare_lm.sh
@@ -37,8 +36,8 @@ fi
 # Stage 2: MFCC feature extraction + mean-variance normalization
 if [ $stage -le 2 ] && [ ${stop_stage} -ge 2 ]; then
    for x in train test; do
-      steps/make_mfcc.sh --nj "$nj" --cmd "$train_cmd" data/$x exp/make_mfcc/$x mfcc
-      steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x mfcc
+      steps/make_mfcc.sh --nj "$nj" --cmd "$train_cmd" data/$x
+      steps/compute_cmvn_stats.sh data/$x
    done
 fi
 
