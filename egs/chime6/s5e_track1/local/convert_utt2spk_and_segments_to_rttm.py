@@ -80,6 +80,8 @@ def main():
             file_id = reco
             #file_id = file_id.strip().split(".")[0].split("_")[1]
             file_id = file_id.strip().split("_")[0]
+            if file_id == "LKC1":
+                continue
             channel = 1
 
             if args.reco2file_and_channel is not None:
