@@ -61,7 +61,7 @@ if [ $stage -le 1 ]; then
     )
   fi
 
-  for dset in dev eval; do
+  for dset in dev; do
       local/run_gss_rttm.sh \
         --cmd "$train_cmd" --nj 100 \
         --multiarray outer_array_mics \

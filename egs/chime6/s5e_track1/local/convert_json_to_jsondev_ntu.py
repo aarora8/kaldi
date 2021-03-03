@@ -27,20 +27,13 @@ def get_args():
 
 def main():
     args = get_args()
-    output_json_file = args.output_json_dir + '/' + 'ntu_json' 
+    output_json_file = args.output_json_dir + '/' + 'ntu.json' 
     output = []
     print(output_json_file)
     with open(output_json_file, 'w') as jfile:
-        utt_dict = {"end_time": 'ashish',
-                       "start_time": 'ashish',
-                       "words": 'ashish',
-                       "speaker": 'ashish',
-                       "ref": 'ashish',
-                       "location": 'ashish',
-                       "session_id": 'ashish',
-                       "session_1": '[ch1.wav, ch2.wav, ...]',
-                       "LKC2": '[LKC2_SS21_U1850720G_Tr2.wav, LKC2_SS22_U1850810F_Tr1.wav, LKC2_SS23_U1850370J_L.wav, LKC2_SS24_U1850200D_R.wav, LKC2_SS25_U1850031F_Tr3.wav, LKC2_SS26_U1850911E_Tr4.wav]'
-                       }
+        utt_dict = {
+                    'LKC2': '/export/c06/aarora8/kaldi/egs/chime6/s5e_track1/LKC_S2/LKC2.wav'
+                   }
         output.append(utt_dict)
         json.dump(output, jfile, sort_keys = True, indent=4)
 

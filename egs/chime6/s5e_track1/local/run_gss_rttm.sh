@@ -54,13 +54,10 @@ fi
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || \
   { echo "Could not make absolute '$enhanced_dir'" && exit 1; }
 
-echo $reference_array
-echo $session_id
 $cmd JOB=1:$nj $log_dir/log/enhance_${session_id}.JOB.log \
   cd pb_chime5/ '&&' \
-  $miniconda_dir/bin/python -m pb_chime5.scripts.kaldi_run_rttm with \
+  $miniconda_dir/bin/python -m pb_chime5.scripts.kaldi_run_rttm_libri_css with \
     storage_dir=$enhanced_dir \
-    chime6_dir=/export/c06/aarora8/kaldi/egs/chime6/s5e_track1/LKC_S2 \
     database_rttm="/export/c06/aarora8/kaldi/egs/chime6/s5e_track1/data/train/rttm" \
-    session_id=$session_id \
+    session_to_audio_paths="/export/c06/aarora8/kaldi/egs/chime6/s5e_track1/data/train/ntu.json" \
     job_id=JOB number_of_jobs=$nj || exit 1
