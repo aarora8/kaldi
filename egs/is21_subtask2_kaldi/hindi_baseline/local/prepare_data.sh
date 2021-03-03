@@ -11,7 +11,7 @@ if [[ $1 && $2 ]]; then
   echo "copy files from corpus/data to data/ for $1 $2"
 
   for x in $1 $2; do
-    cp corpus/data/$x/* data/$x/.
+    cp -r corpus/data/$x/ data/
   done
 
   echo "Preparing data OK."

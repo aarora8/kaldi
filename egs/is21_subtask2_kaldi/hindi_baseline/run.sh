@@ -27,7 +27,7 @@ decode_nj=24    # number of parallel jobs to run for test during decoding
 # language model.
 if [ $stage -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   echo "Preparing data and training language models"
-  local/prepare_data.sh train test
+  #local/prepare_data.sh train test
   local/prepare_dict.sh
   utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
   local/prepare_lm.sh
