@@ -23,7 +23,7 @@ for line in infile:
   line_vect = line.strip().split(' ')
   uttid = line_vect[0]
   sequence_id = int(uttid.split('_')[-1])
-  paragraph_id = " ".join(uttid.split('-')[0:-1]
+  paragraph_id = "_".join(uttid.split('_')[0:-1])
   utterance_text = " ".join(line_vect[1:])
   if paragraph_id not in paragraph_txt_dict.keys():
       paragraph_txt_dict[paragraph_id] = dict()
