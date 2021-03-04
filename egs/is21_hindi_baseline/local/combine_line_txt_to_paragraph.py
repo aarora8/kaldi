@@ -37,5 +37,5 @@ for para_id in sorted(paragraph_txt_dict.keys()):
         text = paragraph_txt_dict[para_id][line_id]
         para_txt = para_txt + " " + text
     para_txt_dict[para_id] = para_txt
-    utt_id = 'speaker_' + str(para_id).zfill(6)
+    utt_id = str(para_id).zfill(6)
     output.write(utt_id + ' ' + para_txt + '\n')
