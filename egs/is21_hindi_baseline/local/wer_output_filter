@@ -13,11 +13,7 @@ def get_filter_dict(trans_book, delimiter):
     with open(trans_book, 'r') as tb:
         for line in tb.readlines():
             word, orig_word = line.rstrip().split(delimiter)
-            if word in filter_dict:
-                print("Word '{}' appears more than once in file {}, please check".format(word, trans_book),
-                    file=sys.stderr)
-            else:
-                filter_dict[word] = orig_word
+            filter_dict[word] = orig_word
 
     return filter_dict
             
@@ -38,7 +34,7 @@ def analysis():
 def main():
     # awk -F ',' '{ if (length($2) != 1) { print $0} }' is21_hindi_words-dev_set.csv > is21_hindi_english_devfiltered.csv
     delimiter = ','
-    trans_book = 'corpus/is21_hindi_english_devfiltered.csv'
+    trans_book = 'corpus/hindi_english_all'
     filter_dict = get_filter_dict(trans_book, delimiter)
     filter(filter_dict)
     analysis()
