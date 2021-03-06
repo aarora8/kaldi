@@ -253,33 +253,4 @@ if [ $stage -le 16 ]; then
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
 
-# Not testing the 'looped' decoding separately, because for
-# TDNN systems it would give exactly the same results as the
-# normal decoding.
-
-if $test_online_decoding && [ $stage -le 17 ]; then
-  # note: if the features change (e.g. you add pitch features), you will have to
-  # change the options of the following command line.
-  steps/online/nnet3/prepare_online_decoding.sh \
-    --mfcc-config conf/mfcc_hires.conf \
-    $lang exp/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online
-
-  rm $dir/.error 2>/dev/null || true
-
-  for data in $test_sets; do
-    (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
-      # note: we just give it "data/${data}" as it only uses the wav.scp, the
-      # feature type does not matter.
-      steps/online/nnet3/decode.sh \
-        --acwt 1.0 --post-decode-acwt 10.0 \
-        --nj $nspk --cmd "$decode_cmd" \
-        $tree_dir/graph data/${data} ${dir}_online/decode_${data} || exit 1
-    ) || touch $dir/.error &
-  done
-  wait
-  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
-fi
-
-
 exit 0;

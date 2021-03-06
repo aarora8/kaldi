@@ -104,7 +104,8 @@ for i in `seq 0 $[num_sys-1]`; do
 done
 
 mkdir -p $dir/scoring/log
-local/wer_output_filter < $data/text > $dir/scoring/test_filt.txt
+#local/wer_output_filter < $data/text > $dir/scoring/test_filt.txt
+cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' | local/wer_output_filter > $dir/scoring/test_filt.txt
 hyp_filtering_cmd="local/wer_output_filter"
 if [ -z "$lat_weights" ]; then
   lat_weights=1.0
@@ -113,14 +114,12 @@ fi
 
 if [ -z "$lat_weights" ]; then
   $cmd $parallel_opts LMWT=$min_lmwt:$max_lmwt $dir/log/combine_lats.LMWT.log \
-    mkdir -p $dir/score_LMWT/ '&&' \
-    lattice-combine --skip-incompatible-utts=true "${lats[@]}" ark:- \| \
+    lattice-combine "${lats[@]}" ark:- \| \
     lattice-mbr-decode --word-symbol-table=$symtab ark:- \
     ark,t:$dir/scoring/LMWT.tra || exit 1;
 else
   $cmd $parallel_opts LMWT=$min_lmwt:$max_lmwt $dir/log/combine_lats.LMWT.log \
-    mkdir -p $dir/score_LMWT/ '&&' \
-    lattice-combine --skip-incompatible-utts=true "${lats[@]}" ark:- \| \
+    lattice-combine "${lats[@]}" ark:- \| \
     lattice-mbr-decode --word-symbol-table=$symtab ark:- \
     ark,t:$dir/scoring/LMWT.tra || exit 1;
 fi
