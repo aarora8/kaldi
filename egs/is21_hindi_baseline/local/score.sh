@@ -19,8 +19,11 @@ data_dir=$1
 lang_dir=$2
 decode_dir=$3
 
-local/score_kaldi_wer.sh --word_ins_penalty $word_ins_penalty \
-  --min_lmwt $min_lmwt --max_lmwt $max_lmwt "$@"
+#local/score_kaldi_wer.sh --word_ins_penalty $word_ins_penalty \
+#  --min_lmwt $min_lmwt --max_lmwt $max_lmwt "$@"
 
-local/score_paragraph.sh --word_ins_penalty $word_ins_penalty \
+#local/score_paragraph.sh --word_ins_penalty $word_ins_penalty \
+#  --min_lmwt $min_lmwt --max_lmwt $max_lmwt $decode_dir
+
+local/score_combine_paragraph.sh --word_ins_penalty $word_ins_penalty \
   --min_lmwt $min_lmwt --max_lmwt $max_lmwt $decode_dir
