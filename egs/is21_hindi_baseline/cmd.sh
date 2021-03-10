@@ -11,6 +11,7 @@
 # or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
 
 export train_cmd="queue.pl --mem 8G --nodes_rack 4"
+export cmd="queue.pl --mem 8G --nodes_rack 4"
 export decode_cmd="queue.pl --mem 8G --nodes_rack 4"
 export train_cmd_intel="queue.pl --mem 8G --nodes_rack 4"
 export train_cmd_all_intel="queue.pl --mem 8G --remove_nodes_rack 7"
