@@ -32,21 +32,11 @@ run_lat_rescore=true
 run_nbest_rescore=true
 run_backward_rnnlm=false
 
-#Track 2 Ashish' model that gives dev 78.24 and eval 73.55 in the google sheet (ASR)
-# dir = ${ac_model_dir}/{dev,eval}_beamformit_dereverb_diarized_U06_2stage
-
-#Track 2 same acoustic model (I assume), gss preprocess;
-ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_l2_03_4500_ep6_sp_track2
+ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_sp
 
 decode_dir_suffix_forward=rnnlm_1b
 decode_dir_suffix_backward=rnnlm_1b_back
-# enhancement=beamformit
-# Track2 dev/eval WERs are 69.28/68.78 decode_{dev, eval}_gss_MA_cs320000_rttm_overlap_dereverb_diarized_2stage
-# enhancement=gss_MA_cs320000_rttm_overlap
-# Track 2 dev/eval WERs are 70.97/68.75, this corresponds to line34 in GSS-track2 of the google sheet
-# enhancement=gss_MA_cs320000_rttm
-# enhancement=gss_cs480000_it5_rttm_overlap_min200ms_U04
-enhancement=gss_cs480000_it5_rttm_overlap_min200ms
+enhancement=gss_multiarray
 chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
