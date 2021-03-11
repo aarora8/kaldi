@@ -128,10 +128,9 @@ fi
 # old 3-gram LM is data/lang/G.fst 
 if [ $stage -le 4 ] && $run_lat_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
-  # for decode_set in dev_beamformit_dereverb_diarized_U06 eval_beamformit_dereverb_diarized_U06; do
-  for decode_set in dev_${enhancement}_dereverb_diarized eval_${enhancement}_dereverb_diarized; do
-    decode_dir=${ac_model_dir}/decode_${decode_set}_2stage
 
+  for decode_set in dev_${enhancement} eval_${enhancement}; do
+    decode_dir=${ac_model_dir}/decode_${decode_set}_2stage
     # Lattice rescoring
     rnnlm/lmrescore_back.sh \
       --cmd "$decode_cmd --mem 4G" \
@@ -140,48 +139,5 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
       data/${decode_set}_hires ${decode_dir}_${decode_dir_suffix_forward}_0.4 \
       ${decode_dir}_${decode_dir_suffix_backward}_0.2
   done
-fi
-
-if [ $stage -le 5 ]; then
-  # final scoring to get the official challenge result
-  # please specify both dev and eval set directories so that the search parameters
-  # (insertion penalty and language model weight) will be tuned using the dev set
-      #--dev_datadir dev_${enhancement}_dereverb_diarized_U06_hires \
-      #--eval_datadir eval_${enhancement}_dereverb_diarized_U06_hires
-  local/score_for_submit_track2.sh --stage $score_stage \
-      --dev_decodedir ${ac_model_dir}/decode_dev_${enhancement}_dereverb_diarized_2stage_${decode_dir_suffix_backward}_0.2 \
-      --dev_datadir dev_${enhancement}_dereverb_diarized_hires \
-      --eval_decodedir ${ac_model_dir}/decode_eval_${enhancement}_dereverb_diarized_2stage_${decode_dir_suffix_backward}_0.2 \
-      --eval_datadir eval_${enhancement}_dereverb_diarized_hires
-fi
-
-# old 3-gram LM is data/lang/G.fst 
-if [ $stage -le 6 ] && $run_lat_rescore; then
-  echo "$0: Perform lattice-rescoring on $ac_model_dir"
-  # for decode_set in dev_beamformit_dereverb_diarized_U06 eval_beamformit_dereverb_diarized_U06; do
-  for decode_set in dev_${enhancement}_dereverb_diarized eval_${enhancement}_dereverb_diarized; do
-    decode_dir=${ac_model_dir}/decode_${decode_set}_2stage
-
-    # Lattice rescoring
-    rnnlm/lmrescore_back.sh \
-      --cmd "$decode_cmd --mem 4G" \
-      --weight 0.2 --max-ngram-order $ngram_order \
-      data/lang $dir \
-      data/${decode_set}_hires ${decode_dir}_${decode_dir_suffix_forward}_0.4 \
-      ${decode_dir}_${decode_dir_suffix_backward}_0.2
-  done
-fi
-
-if [ $stage -le 7 ]; then
-  # final scoring to get the official challenge result
-  # please specify both dev and eval set directories so that the search parameters
-  # (insertion penalty and language model weight) will be tuned using the dev set
-      #--dev_datadir dev_${enhancement}_dereverb_diarized_U06_hires \
-      #--eval_datadir eval_${enhancement}_dereverb_diarized_U06_hires
-  local/score_for_submit_track2.sh --stage $score_stage \
-      --dev_decodedir ${ac_model_dir}/decode_dev_${enhancement}_dereverb_diarized_2stage_${decode_dir_suffix_backward}_0.2 \
-      --dev_datadir dev_${enhancement}_dereverb_diarized_hires \
-      --eval_decodedir ${ac_model_dir}/decode_eval_${enhancement}_dereverb_diarized_2stage_${decode_dir_suffix_backward}_0.2 \
-      --eval_datadir eval_${enhancement}_dereverb_diarized_hires
 fi
 exit 0
