@@ -9,7 +9,7 @@ set -euo pipefail
 stage=0
 nj=48
 decode_nj=24
-train_set=train
+train_set=train_cleaned
 test_sets=test
 gmm=tri4b
 nnet3_affix=
@@ -185,7 +185,7 @@ if [ $stage -le 14 ]; then
   fi
 
   steps/nnet3/chain/train.py --stage=$train_stage \
-    --cmd="$decode_cmd" \
+    --cmd="$gpu_cmd" \
     --feat.online-ivector-dir=$train_ivector_dir \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \

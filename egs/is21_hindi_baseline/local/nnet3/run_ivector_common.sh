@@ -11,7 +11,7 @@ set -euo pipefail
 # of usage.
 
 stage=0
-train_set=train
+train_set=train_cleaned
 test_sets=test
 gmm=tri4b
 nj=48

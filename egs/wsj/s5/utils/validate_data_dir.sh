@@ -124,30 +124,30 @@ if [ ! -f $data/text ] && ! $no_text; then
 fi
 
 num_utts=`cat $tmpdir/utts | wc -l`
-if ! $no_text; then
-  if ! $non_print; then
-    n_non_print=$(LC_ALL="C.UTF-8" grep -c '[^[:print:][:space:]]' $data/text) && \
-    echo "$0: text contains $n_non_print lines with non-printable characters" &&\
-    exit 1;
-  fi
-  utils/validate_text.pl $data/text || exit 1;
-  check_sorted_and_uniq $data/text
-  text_len=`cat $data/text | wc -l`
-  illegal_sym_list="<s> </s> #0"
-  for x in $illegal_sym_list; do
-    if grep -w "$x" $data/text > /dev/null; then
-      echo "$0: Error: in $data, text contains illegal symbol $x"
-      exit 1;
-    fi
-  done
-  awk '{print $1}' < $data/text > $tmpdir/utts.txt
-  if ! cmp -s $tmpdir/utts{,.txt}; then
-    echo "$0: Error: in $data, utterance lists extracted from utt2spk and text"
-    echo "$0: differ, partial diff is:"
-    partial_diff $tmpdir/utts{,.txt}
-    exit 1;
-  fi
-fi
+#if ! $no_text; then
+#  if ! $non_print; then
+#    n_non_print=$(LC_ALL="C.UTF-8" grep -c '[^[:print:][:space:]]' $data/text) && \
+#    echo "$0: text contains $n_non_print lines with non-printable characters" &&\
+#    exit 1;
+#  fi
+#  utils/validate_text.pl $data/text || exit 1;
+#  check_sorted_and_uniq $data/text
+#  text_len=`cat $data/text | wc -l`
+#  illegal_sym_list="<s> </s> #0"
+#  for x in $illegal_sym_list; do
+#    if grep -w "$x" $data/text > /dev/null; then
+#      echo "$0: Error: in $data, text contains illegal symbol $x"
+#      exit 1;
+#    fi
+#  done
+#  awk '{print $1}' < $data/text > $tmpdir/utts.txt
+#  if ! cmp -s $tmpdir/utts{,.txt}; then
+#    echo "$0: Error: in $data, utterance lists extracted from utt2spk and text"
+#    echo "$0: differ, partial diff is:"
+#    partial_diff $tmpdir/utts{,.txt}
+#    exit 1;
+#  fi
+#fi
 
 if [ -f $data/segments ] && [ ! -f $data/wav.scp ]; then
   echo "$0: in directory $data, segments file exists but no wav.scp"

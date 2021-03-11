@@ -142,9 +142,16 @@ if [ $stage -le 7 ] && [ ${stop_stage} -ge 7 ]; then
   )&
 fi
 
+if [ $stage -le 8 ]; then
+  # The following script cleans the data and produces cleaned data
+  steps/cleanup/clean_and_segment_data.sh --nj ${nj} --cmd "$train_cmd" \
+    --segmentation-opts "--min-segment-length 0.3 --min-new-segment-length 0.6" \
+    data/train data/lang exp/tri4b exp/tri4b_cleaned data/train_cleaned
+fi
+
 # Train a chain model
-if [ $stage -le 8 ] && [ ${stop_stage} -ge 8 ]; then
-  local/chain/run_tdnn.sh --stage 0 --nj $nj --decode_nj $decode_nj
+if [ $stage -le 9 ] && [ ${stop_stage} -ge 9 ]; then
+  local/chain/run_cnn_tdnn.sh --stage 0 --nj $nj --decode_nj $decode_nj
 fi
 
 wait;
