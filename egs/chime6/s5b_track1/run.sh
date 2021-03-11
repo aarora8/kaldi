@@ -172,8 +172,6 @@ fi
 
 
 if [ $stage -le 6 ]; then
-  # TODO: change training data to 280h including train_worn (40 * 2), gss (40),
-  # and beamformit(40 * 4)
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
   utils/combine_data.sh data/${train_set} data/train_worn train_uall data/train_gss_multiarray
 
