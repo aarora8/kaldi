@@ -104,7 +104,7 @@ if [ $stage -le 2 ]; then
     --oov-symbol "<unk>" --words-file data/lang_nosp/words.txt \
     data/ data/srilm
 fi
-
+exit
 #########################################################################################
 # In stages 3 to 8, we augment and fix train data for our training purpose. point source
 # noises are extracted from chime corpus. Here we use 400k utterances from array microphones,
