@@ -11,7 +11,7 @@ score_stage=0
 enhancement=beamformit
 
 # option to use the new RTTM reference for sad and diarization
-use_new_rttm_reference=false
+use_new_rttm_reference=true
 if $use_new_rttm_reference == "true"; then
   git clone https://github.com/nateanl/chime6_rttm
 fi
