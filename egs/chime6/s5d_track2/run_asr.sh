@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-#
-# This script decodes raw utterances through the entire pipeline:
-# Feature extraction -> SAD -> Diarization -> ASR
-#
-# Copyright  2017  Johns Hopkins University (Author: Shinji Watanabe and Yenda Trmal)
-#            2019  Desh Raj, David Snyder, Ashish Arora, Zhaoheng Ni
-# Apache 2.0
-
 # Begin configuration section.
 nj=8
 stage=0
@@ -55,75 +47,6 @@ test_sets="dev_${enhancement}_dereverb eval_${enhancement}_dereverb"
 dir=exp/segmentation${affix}
 sad_work_dir=exp/sad${affix}_${nnet_type}/
 sad_nnet_dir=$dir/tdnn_${nnet_type}_sad_1a
-
-if [ $stage -le 3 ]; then
-  for datadir in ${test_sets}; do
-    test_set=data/${datadir}
-    if [ ! -f ${test_set}/wav.scp ]; then
-      echo "$0: Not performing SAD on ${test_set}"
-      exit 0
-    fi
-    # Perform segmentation
-    local/segmentation/detect_speech_activity.sh --nj $nj --stage $sad_stage \
-      $test_set $sad_nnet_dir mfcc $sad_work_dir \
-      data/${datadir} || exit 1
-
-    test_dir=data/${datadir}_${nnet_type}_seg
-    mv data/${datadir}_seg ${test_dir}/
-    cp data/${datadir}/{segments.bak,utt2spk.bak} ${test_dir}/
-    # Generate RTTM file from segmentation performed by SAD. This can
-    # be used to evaluate the performance of the SAD as an intermediate
-    # step.
-    steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
-      ${test_dir}/utt2spk ${test_dir}/segments ${test_dir}/rttm
-
-    if [ $score_sad == "true" ]; then
-      echo "Scoring $datadir.."
-      # We first generate the reference RTTM from the backed up utt2spk and segments
-      # files.
-      ref_rttm=${test_dir}/ref_rttm
-      steps/segmentation/convert_utt2spk_and_segments_to_rttm.py ${test_dir}/utt2spk.bak \
-        ${test_dir}/segments.bak ${test_dir}/ref_rttm
-
-      # To score, we select just U06 segments from the hypothesis RTTM.
-      hyp_rttm=${test_dir}/rttm.U06
-      grep 'U06' ${test_dir}/rttm > ${test_dir}/rttm.U06
-      echo "Array U06 selected for scoring.."
-      
-      if $use_new_rttm_reference == "true"; then
-        echo "Use the new RTTM reference."
-        mode="$(cut -d'_' -f1 <<<"$datadir")"
-        ref_rttm=./chime6_rttm/${mode}_rttm
-      fi
-
-      sed 's/_U0[1-6].ENH//g' $ref_rttm > $ref_rttm.scoring
-      sed 's/_U0[1-6].ENH//g' $hyp_rttm > $hyp_rttm.scoring
-      cat ./local/uem_file | grep 'U06' | sed 's/_U0[1-6]//g' > ./local/uem_file.tmp
-      md-eval.pl -1 -c 0.25 -u ./local/uem_file.tmp -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
-        awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
-    fi
-  done
-fi
-
-#######################################################################
-# Perform diarization on the dev/eval data
-#######################################################################
-if [ $stage -le 4 ]; then
-  for datadir in ${test_sets}; do
-    if $use_new_rttm_reference == "true"; then
-      mode="$(cut -d'_' -f1 <<<"$datadir")"
-      ref_rttm=./chime6_rttm/${mode}_rttm
-    else
-      ref_rttm=data/${datadir}_${nnet_type}_seg/ref_rttm
-    fi
-    local/diarize.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
-      --ref-rttm $ref_rttm \
-      exp/xvector_nnet_1a \
-      data/${datadir}_${nnet_type}_seg \
-      exp/${datadir}_${nnet_type}_seg_diarization
-  done
-fi
-
 #######################################################################
 # Decode diarized output using trained chain model
 #######################################################################
