@@ -28,9 +28,9 @@ asr_model_dir=$4
 ivector_extractor=$5
 out_dir=$6
 
-for f in $rttm_dir/rttm $data_in/wav.scp $data_in/text.bak \
+for f in $rttm_dir/rttm $data_in/wav.scp \
          $lang_dir/L.fst $asr_model_dir/tree_sp/graph/HCLG.fst \
-         $asr_model_dir/tdnn1b_sp/final.mdl; do
+         $asr_model_dir/tdnn1b_cnn_sp/final.mdl; do
   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
 
@@ -38,26 +38,24 @@ if [ $stage -le 0 ]; then
   echo "$0 copying data files in output directory"
   cp $rttm_dir/rttm $rttm_dir/rttm_1
   sed -i 's/'.ENH'/''/g' $rttm_dir/rttm_1
-  # removing participant introduction from the hypothesis rttm
-  # UEM file contains the scoring durations for each recording
-  local/truncate_rttm.py $rttm_dir/rttm_1 local/uem_file $rttm_dir/rttm_introduction_removed
   mkdir -p ${out_dir}_hires
-  cp ${data_in}/{wav.scp,utt2spk} ${out_dir}_hires
+  cp ${data_in}/wav.scp ${out_dir}_hires
   utils/data/get_reco2dur.sh ${out_dir}_hires
 fi
 
 if [ $stage -le 1 ]; then
   echo "$0 creating segments file from rttm and utt2spk, reco2file_and_channel "
-  local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true $rttm_dir/rttm_introduction_removed \
-    <(awk '{print $2".ENH "$2" "$3}' $rttm_dir/rttm_introduction_removed |sort -u) \
+  # awk '{print $2".ENH "$2" "$3}' $rttm_dir/rttm_1 |sort -u > ${out_dir}_hires/reco2file_and_channel
+  local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true $rttm_dir/rttm_1 \
+    <(awk '{print $2".ENH "$2" "$3}' $rttm_dir/rttm_1 |sort -u) \
     ${out_dir}_hires/utt2spk ${out_dir}_hires/segments
 
   utils/utt2spk_to_spk2utt.pl ${out_dir}_hires/utt2spk > ${out_dir}_hires/spk2utt
 
-  awk '{print $1" "$1" 1"}' ${out_dir}_hires/wav.scp > ${out_dir}_hires/reco2file_and_channel
+  #awk '{print $1" "$1" 1"}' ${out_dir}_hires/wav.scp > ${out_dir}_hires/reco2file_and_channel
   utils/fix_data_dir.sh ${out_dir}_hires || exit 1;
 fi
-
+exit
 if [ $stage -le 2 ]; then
   echo "$0 extracting mfcc freatures using segments file"
   steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd queue.pl ${out_dir}_hires
