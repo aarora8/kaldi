@@ -2,11 +2,7 @@
 # Begin configuration section.
 nj=4
 stage=0
-sad_stage=0
-score_sad=true
-diarizer_stage=0
-decode_diarize_stage=0
-score_stage=0
+decode_diarize_stage=4
 enhancement=gss_multiarray
 
 # training data

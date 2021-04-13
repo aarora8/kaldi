@@ -72,7 +72,6 @@ fi
 
 if [ $stage -le 4 ]; then
   echo "$0 performing decoding on the extracted features"
-  local/nnet3/decode.sh --affix 2stage --acwt 1.0 --post-decode-acwt 10.0 \
-    --frames-per-chunk 150 --nj $nj --ivector-dir $ivector_extractor \
-    $out_dir $lang_dir $asr_model_dir/tree_sp/graph $asr_model_dir/tdnn1b_sp/
+  data_set=$(basename $out_dir)
+  cat $asr_model_dir/tdnn1b_sp//decode_${data_set}_2stage/scoring_kaldi/penalty_0.0/10.txt
 fi
