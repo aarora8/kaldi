@@ -6,7 +6,7 @@
 
 
 stage=0
-nj=8
+nj=4
 cmd=queue.pl
 echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -30,7 +30,7 @@ out_dir=$6
 
 for f in $rttm_dir/rttm $data_in/wav.scp \
          $lang_dir/L.fst $asr_model_dir/tree_sp/graph/HCLG.fst \
-         $asr_model_dir/tdnn1b_cnn_sp/final.mdl; do
+         $asr_model_dir/tdnn1b_sp/final.mdl; do
   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
 
@@ -48,19 +48,18 @@ if [ $stage -le 1 ]; then
   # awk '{print $2".ENH "$2" "$3}' $rttm_dir/rttm_1 |sort -u > ${out_dir}_hires/reco2file_and_channel
   local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true $rttm_dir/rttm_1 \
     <(awk '{print $2".ENH "$2" "$3}' $rttm_dir/rttm_1 |sort -u) \
-    ${out_dir}_hires/utt2spk ${out_dir}_hires/segments ${out_dir}_hires/text
+    ${out_dir}_hires/utt2spk ${out_dir}_hires/text
 
   utils/utt2spk_to_spk2utt.pl ${out_dir}_hires/utt2spk > ${out_dir}_hires/spk2utt
 
   #awk '{print $1" "$1" 1"}' ${out_dir}_hires/wav.scp > ${out_dir}_hires/reco2file_and_channel
   utils/fix_data_dir.sh ${out_dir}_hires || exit 1;
 fi
-exit
+
 if [ $stage -le 2 ]; then
   echo "$0 extracting mfcc freatures using segments file"
   steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd queue.pl ${out_dir}_hires
   steps/compute_cmvn_stats.sh ${out_dir}_hires
-  cp $data_in/text.bak ${out_dir}_hires/text
 fi
 
 if [ $stage -le 3 ]; then
@@ -70,3 +69,10 @@ if [ $stage -le 3 ]; then
     $out_dir $lang_dir $asr_model_dir/tree_sp/graph $asr_model_dir/tdnn1b_sp/
 fi
 
+
+if [ $stage -le 4 ]; then
+  echo "$0 performing decoding on the extracted features"
+  local/nnet3/decode.sh --affix 2stage --acwt 1.0 --post-decode-acwt 10.0 \
+    --frames-per-chunk 150 --nj $nj --ivector-dir $ivector_extractor \
+    $out_dir $lang_dir $asr_model_dir/tree_sp/graph $asr_model_dir/tdnn1b_sp/
+fi

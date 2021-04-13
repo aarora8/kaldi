@@ -29,8 +29,6 @@ def get_args():
                         The format is <recording-id> <file-id> <channel-id>.""")
     parser.add_argument("utt2spk", type=str,
                         help="Output utt2spk file")
-    parser.add_argument("segments", type=str,
-                        help="Output segments file")
     parser.add_argument("text", type=str,
                         help="Output text file")
 
@@ -50,14 +48,12 @@ def main():
 
     file_and_channel2reco = {}
     utt2spk={}
-    segments={}
     text={}
     for line in open(args.reco2file_and_channel):
         parts = line.strip().split()
         file_and_channel2reco[(parts[1], parts[2])] = parts[0]
 
     utt2spk_writer = open(args.utt2spk, 'w')
-    segments_writer = open(args.segments, 'w')
     text_writer = open(args.text, 'w')
     for line in open(args.rttm_file):
         parts = line.strip().split()
@@ -86,14 +82,11 @@ def main():
         # P05_S02
         utt = "{0}-{1:07d}-{2:07d}".format(spkr_session,st, end)
         utt2spk[utt]=spkr
-        segments[utt]=(reco, start_time, end_time)
         text[utt]="dummy"
 
     for uttid_id in sorted(utt2spk):
         utt2spk_writer.write("{0} {1}\n".format(uttid_id, utt2spk[uttid_id]))
         text_writer.write("{0} {1}\n".format(uttid_id, text[uttid_id]))
-        segments_writer.write("{0} {1} {2:7.2f} {3:7.2f}\n".format(
-            uttid_id, uttid_id, segments[uttid_id][1], segments[uttid_id][2]))
 
 if __name__ == '__main__':
     main()

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Begin configuration section.
-nj=8
+nj=4
 stage=0
 sad_stage=0
 score_sad=true
