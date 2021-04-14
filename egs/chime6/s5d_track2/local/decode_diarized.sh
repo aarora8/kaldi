@@ -72,7 +72,7 @@ if [ $stage -le 4 ]; then
   do
     # P05_S02-0004060-0004382
     utteranceid=$(echo "$line" | cut -f1 -d " ")
-    speakerid=$(echo "$line" | cut -f1 -d "-" | cut -f2 -d "_")
+    speakerid=$(echo "$line" | cut -f1 -d "_")
     text=$(echo "$line" | cut -f2- -d " ")
     echo $utteranceid "  " $speakerid "  " $text
   done < $asr_model_dir/tdnn1b_sp/decode_${data_set}_2stage/scoring_kaldi/penalty_0.0/10.txt
