@@ -45,14 +45,11 @@ fi
 
 if [ $stage -le 1 ]; then
   echo "$0 creating segments file from rttm and utt2spk, reco2file_and_channel "
-  # awk '{print $2".ENH "$2" "$3}' $rttm_dir/rttm_1 |sort -u > ${out_dir}_hires/reco2file_and_channel
   local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true $rttm_dir/rttm_1 \
     <(awk '{print $2".ENH "$2" "$3}' $rttm_dir/rttm_1 |sort -u) \
     ${out_dir}_hires/utt2spk ${out_dir}_hires/text
 
   utils/utt2spk_to_spk2utt.pl ${out_dir}_hires/utt2spk > ${out_dir}_hires/spk2utt
-
-  #awk '{print $1" "$1" 1"}' ${out_dir}_hires/wav.scp > ${out_dir}_hires/reco2file_and_channel
   utils/fix_data_dir.sh ${out_dir}_hires || exit 1;
 fi
 

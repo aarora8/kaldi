@@ -16,12 +16,6 @@ test_sets="dev_${enhancement}"
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
 
-#######################################################################
-# Decode diarized output using trained chain model
-# echo "e.g.: $0 data/rttm data/dev data/lang_chain exp/chain_train_worn_simu_u400k_cleaned_rvb \
-#                 exp/nnet3_train_worn_simu_u400k_cleaned_rvb data/dev_diarized"
-# echo "Usage: $0 <rttm-dir> <in-data-dir> <lang-dir> <model-dir> <ivector-dir> <out-dir>"
-#######################################################################
 if [ $stage -le 0 ]; then
   for datadir in ${test_sets}; do
     local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
