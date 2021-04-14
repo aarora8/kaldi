@@ -18,7 +18,9 @@ if [ $stage -le 0 ]; then
   echo "$0 download pre-train ASR model"
   wget http://kaldi-asr.org/models/12/0012_asr_v1.tar.gz
   tar -xvzf 0012_asr_v1.tar.gz
-  
+  cp -r 0012_asr_v1/data/lang data/
+  cp -r 0012_asr_v1/exp/nnet3_train_worn_simu_u400k_cleaned_rvb/ exp/
+  cp -r 0012_asr_v1/exp/chain_train_worn_simu_u400k_cleaned_rvb/ exp/
 fi
 
 if [ $stage -le 1 ]; then
