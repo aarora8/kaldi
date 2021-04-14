@@ -66,9 +66,14 @@ if [ $stage -le 3 ]; then
     $out_dir $lang_dir $asr_model_dir/tree_sp/graph $asr_model_dir/tdnn1b_sp/
 fi
 
-
 if [ $stage -le 4 ]; then
-  echo "$0 Display speakerwise decoded output"
   data_set=$(basename $out_dir)
-  cat $asr_model_dir/tdnn1b_sp//decode_${data_set}_2stage/scoring_kaldi/penalty_0.0/10.txt
+  while read -r line;
+  do
+    # P05_S02-0004060-0004382
+    utteranceid=$(echo "$line" | cut -f1 -d " ")
+    speakerid=$(echo "$line" | cut -f1 -d "-" | cut -f2 -d "_")
+    text=$(echo "$line" | cut -f2- -d " ")
+    echo $utteranceid "  " $speakerid "  " $text
+  done < $asr_model_dir/tdnn1b_sp/decode_${data_set}_2stage/scoring_kaldi/penalty_0.0/10.txt
 fi

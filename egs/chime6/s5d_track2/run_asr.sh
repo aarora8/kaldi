@@ -27,7 +27,7 @@ if [ $stage -le 1 ]; then
   echo "$0 perform decoding using the rttm from diarization and enhanced GSS wav files"
   for datadir in ${test_sets}; do
     local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
-      local/rttm data/$datadir data/lang \
+      local/ data/$datadir data/lang \
       exp/chain_${train_set}_cleaned_rvb exp/nnet3_${train_set}_cleaned_rvb \
       data/${datadir}_diarized || exit 1
   done
