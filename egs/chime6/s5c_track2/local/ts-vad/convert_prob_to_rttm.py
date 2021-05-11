@@ -33,7 +33,7 @@ import regex as re
 import numpy as np
 from scipy import signal, ndimage
 from kaldiio import ReadHelper
-
+import io
 
 class Segment:
     def __init__(self, begin, end, label):
@@ -91,7 +91,7 @@ class VadProbSet:
     def convert(self, frame_shift,  min_silence, min_speech, out_rttm):
         min_silence = int(round(min_silence / frame_shift))
         min_speech = int(round(min_speech / frame_shift))
-        with open(out_rttm, 'wt', encoding='utf-8') as wstream:
+        with io.open(out_rttm, 'wt', encoding='utf-8') as wstream:
             for sess, prob in self.data.items():
                 print('  session: {}  num_frames: {}  duration: {:.2f} hrs'.format(sess, len(prob), len(prob) * frame_shift / 60 / 60))
                 segments = list()
@@ -122,7 +122,7 @@ class VadProbSet:
                         assert result is not None, 'Wrong format: \"{}\"'.format(sess)
                         utid = result.group(1)
                         spk = result.group(2)
-                        wstream.write('SPEAKER {} 1 {:7.3f} {:7.3f} <NA> <NA> {} <NA> <NA>\n'.format(utid, begin, length, spk))
+                        wstream.write('SPEAKER {} 1 {:7.3f} {:7.3f} <NA> <NA> {} <NA> <NA>\n'.format(utid, begin, length, spk).decode('utf-8'))
         wstream.close()
 
 if __name__ == '__main__':
