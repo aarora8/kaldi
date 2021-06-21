@@ -3,8 +3,7 @@
 import os
 import argparse
 parser = argparse.ArgumentParser(description="""get text from transcripts""")
-parser.add_argument('text_file', type=str, help='File name of a file that contains the'
-                    'text. Each line must be: <uttid> <word1> <word2> ...')
+parser.add_argument('text_file', type=str, help='File name of a file that contains the')
 parser.add_argument('output_transcript', type=str, help='Output file that contains transcript')
 def main():
 
