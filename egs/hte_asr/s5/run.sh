@@ -10,6 +10,7 @@ stage=0
 set -euo pipefail
 
 if [ $stage -le 1 ]; then
+  # corpora data location = /export/c01/aarora8/kaldi/egs/hte_asr/s5/corpora_data/
   cp -r corpora_data/data .
   local/prepare_dict.sh
   utils/prepare_lang.sh data/local/dict_nosp '<UNK>' data/local/lang_nosp data/lang_nosp
