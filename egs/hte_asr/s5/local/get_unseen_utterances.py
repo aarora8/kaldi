@@ -13,7 +13,7 @@ def main():
     text_file_data = text_file_handle.read().strip().split("\n")
     for line in text_file_data:
         parts = line.strip().split()
-        if parts[0] != 0:
+        if int(parts[0]) != 0:
             continue
         output_transcript_handle.write(" ".join(parts[1:]) + '\n')
 
