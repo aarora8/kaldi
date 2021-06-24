@@ -3,7 +3,7 @@
 set -e -o pipefail
 stage=0
 nj=60
-train_set=train
+train_set=train_cleaned
 gmm=tri3
 num_epochs=10
 
@@ -181,20 +181,20 @@ if [ $stage -le 16 ]; then
     --dir=$dir  || exit 1;
 fi
 
-if [ $stage -le 17 ]; then
-
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
-    data/dev_hires exp/nnet3${nnet3_affix}/extractor \
-    exp/nnet3${nnet3_affix}/ivectors_dev_hires
-
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_nosp_test $dir $dir/graph
-fi
+#if [ $stage -le 17 ]; then
+#
+#  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
+#    data/dev_hires_unseen exp/nnet3${nnet3_affix}/extractor \
+#    exp/nnet3${nnet3_affix}/ivectors_dev_hires_unseen
+#
+#  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_nosp_test $dir $dir/graph
+#fi
 
 if [ $stage -le 18 ]; then
     steps/nnet3/decode.sh --nj 20 --cmd "$decode_cmd" \
         --acwt 1.0 --post-decode-acwt 10.0 \
-        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_dev_hires \
-       $dir/graph data/dev_hires $dir/decode_dev || exit 1;
+        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_dev_hires_unseen \
+       $dir/graph data/dev_hires_unseen $dir/decode_dev_unseen || exit 1;
 fi
 exit 0
 

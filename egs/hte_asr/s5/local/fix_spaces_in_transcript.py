@@ -9,8 +9,8 @@ parser.add_argument('output_transcript', type=str, help='Output file that contai
 def main():
 
     args = parser.parse_args()
-    output_transcript_handle = open(args.output_transcript, 'w')
-    text_file_handle = open(args.text_file, 'r')
+    output_transcript_handle = open(args.output_transcript, 'w', encoding='utf8')
+    text_file_handle = open(args.text_file, 'r', encoding='utf8')
     text_file_data = text_file_handle.read().strip().split("\n")
     for line in text_file_data:
         parts = line.strip().split()

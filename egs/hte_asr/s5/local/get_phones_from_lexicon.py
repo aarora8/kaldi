@@ -13,9 +13,9 @@ def main():
 
     args = parser.parse_args()
     phonesdict = dict()
-    output_nonsilphones_handle = open(args.output_nonsilence_phones, 'w')
-    output_lexicon_handle = open(args.output_lexicon, 'w')
-    lexicon_handle = open(args.lexicon, 'r')
+    output_nonsilphones_handle = open(args.output_nonsilence_phones, 'w', encoding='utf8')
+    output_lexicon_handle = open(args.output_lexicon, 'w', encoding='utf8')
+    lexicon_handle = open(args.lexicon, 'r', encoding='utf8')
     lexicon_data = lexicon_handle.read().strip().split("\n")
     for line in lexicon_data:
         parts = line.strip().split()

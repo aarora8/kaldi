@@ -9,59 +9,59 @@ stage=0
 . utils/parse_options.sh
 
 set -euo pipefail
-opensat_corpora=/export/corpora5/opensat_corpora
-SAFE_T_AUDIO_R20=/export/corpora5/opensat_corpora/LDC2020E10
-SAFE_T_TEXTS_R20=/export/corpora5/opensat_corpora/LDC2020E09
-SAFE_T_AUDIO_R11=/export/corpora5/opensat_corpora/LDC2019E37
-SAFE_T_TEXTS_R11=/export/corpora5/opensat_corpora/LDC2019E36
-SAFE_T_AUDIO_DEV1=/export/corpora5/opensat_corpora/LDC2019E53
-SAFE_T_TEXTS_DEV1=/export/corpora5/opensat_corpora/LDC2019E53
-SAFE_T_AUDIO_EVAL1=/export/corpora5/opensat_corpora/LDC2020E07
-ICSI_DIR=/export/corpora5/LDC/LDC2004S02/meeting_speech/speech
-AMI_DIR=/export/corpora5/amicorpus/
+SAFE_T_AUDIO_R20=/exp/aarora/corpora/safet/LDC2020E10
+SAFE_T_TEXTS_R20=/exp/aarora/corpora/safet/LDC2020E09
+SAFE_T_AUDIO_R11=/exp/aarora/corpora/safet/LDC2019E37
+SAFE_T_TEXTS_R11=/exp/aarora/corpora/safet/LDC2019E36
+SAFE_T_AUDIO_DEV1=/exp/aarora/corpora/safet/LDC2019E53
+SAFE_T_TEXTS_DEV1=/exp/aarora/corpora/safet/LDC2019E53
+SAFE_T_AUDIO_EVAL1=/exp/aarora/corpora/safet/LDC2020E07
 
-if [ $stage -le 0 ]; then
-  echo ============================================================================
-  echo "              Prepare SAFE-T data"
-  echo ============================================================================
-  local/safet_data_prep.sh ${SAFE_T_AUDIO_R11} ${SAFE_T_TEXTS_R11} data/safe_t_r11
-  local/safet_data_prep.sh ${SAFE_T_AUDIO_R20} ${SAFE_T_TEXTS_R20} data/safe_t_r20
-  local/safet_data_prep.sh ${SAFE_T_AUDIO_DEV1} ${SAFE_T_TEXTS_DEV1} data/safe_t_dev1
-  local/safet_data_prep.sh ${SAFE_T_AUDIO_EVAL1} data/safe_t_eval1
-fi
+#if [ $stage -le 0 ]; then
+#  echo ============================================================================
+#  echo "              Prepare SAFE-T data"
+#  echo ============================================================================
+#  local/safet_data_prep.sh ${SAFE_T_AUDIO_R11} ${SAFE_T_TEXTS_R11} data/safe_t_r11
+#  local/safet_data_prep.sh ${SAFE_T_AUDIO_R20} ${SAFE_T_TEXTS_R20} data/safe_t_r20
+#  local/safet_data_prep.sh ${SAFE_T_AUDIO_DEV1} ${SAFE_T_TEXTS_DEV1} data/safe_t_dev1
+#  local/safet_data_prep.sh ${SAFE_T_AUDIO_EVAL1} data/safe_t_eval1
+#fi
 
 if [ $stage -le 1 ]; then
-  local/safet_get_cmu_dict.sh
+#  local/safet_get_cmu_dict.sh
+  local/prepare_dict.sh
   utils/prepare_lang.sh data/local/dict_nosp '<UNK>' data/local/lang_nosp data/lang_nosp
+#  utils/prepare_lang.sh --position-dependent-phones false data/local/dict_nosp "<UNK>" data/local/lang_tmp_nosp data/lang_nosp
   utils/validate_lang.pl data/lang_nosp
 fi
 
-if [ $stage -le 2 ]; then
-  mkdir -p exp/cleanup_stage_1
-  (
-    local/safet_cleanup_transcripts.py data/local/lexicon.txt data/safe_t_r11/transcripts data/safe_t_r11/transcripts.clean
-    local/safet_cleanup_transcripts.py data/local/lexicon.txt data/safe_t_r20/transcripts data/safe_t_r20/transcripts.clean
-  ) | sort > exp/cleanup_stage_1/oovs
-
-  local/safet_cleanup_transcripts.py --no-unk-replace  data/local/lexicon.txt \
-    data/safe_t_dev1/transcripts data/safe_t_dev1/transcripts.clean > exp/cleanup_stage_1/oovs.dev1
-
-  local/safet_build_data_dir.sh data/safe_t_r11/ data/safe_t_r11/transcripts.clean
-  local/safet_build_data_dir.sh data/safe_t_r20/ data/safe_t_r20/transcripts.clean
-  local/safet_build_data_dir.sh data/safe_t_dev1/ data/safe_t_dev1/transcripts
-
-  utils/data/combine_data.sh data/train data/safe_t_r20 data/safe_t_r11
-fi
+#if [ $stage -le 2 ]; then
+#  mkdir -p exp/cleanup_stage_1
+#  (
+#    local/safet_cleanup_transcripts.py data/local/lexicon.txt data/safe_t_r11/transcripts data/safe_t_r11/transcripts.clean
+#    local/safet_cleanup_transcripts.py data/local/lexicon.txt data/safe_t_r20/transcripts data/safe_t_r20/transcripts.clean
+#  ) | sort > exp/cleanup_stage_1/oovs
+#
+#  local/safet_cleanup_transcripts.py --no-unk-replace  data/local/lexicon.txt \
+#    data/safe_t_dev1/transcripts data/safe_t_dev1/transcripts.clean > exp/cleanup_stage_1/oovs.dev1
+#
+#  local/safet_build_data_dir.sh data/safe_t_r11/ data/safe_t_r11/transcripts.clean
+#  local/safet_build_data_dir.sh data/safe_t_r20/ data/safe_t_r20/transcripts.clean
+#  local/safet_build_data_dir.sh data/safe_t_dev1/ data/safe_t_dev1/transcripts
+#
+#  utils/data/combine_data.sh data/train data/safe_t_r20 data/safe_t_r11
+#fi
 
 if [ $stage -le 3 ] ; then
   echo ============================================================================
   echo "              Obtain LM from SAFE-T train text"
   echo ============================================================================
-  local/safet_train_lms_srilm.sh \
-    --train_text data/train/text --dev_text data/safe_t_dev1/text  \
-    data/ data/local/srilm
-  utils/format_lm.sh  data/lang_nosp/ data/local/srilm/lm.gz\
-    data/local/lexicon.txt  data/lang_nosp_test
+  #local/safet_train_lms_srilm.sh \
+  #  --train_text data/train/text --dev_text data/safe_t_dev1/text  \
+  #  data/ data/local/srilm
+  local/prepare_lm.sh
+  utils/format_lm.sh  data/lang_nosp/ data/local/lm/lm.gz \
+    data/local/dict_nosp/lexicon/lexicon_raw_nosil.txt  data/lang_nosp_test
 fi
 
 # Feature extraction,
@@ -110,6 +110,12 @@ if [ $stage -le 8 ]; then
 fi
 
 if [ $stage -le 9 ]; then
+  steps/cleanup/clean_and_segment_data.sh --nj 10 --cmd "$train_cmd" \
+    --segmentation-opts "--min-segment-length 0.3 --min-new-segment-length 0.6" \
+    data/train data/lang_nosp_test exp/tri3_train exp/tri3_train_cleaned data/train_cleaned
+fi
+exit
+if [ $stage -le 10 ]; then
   echo ============================================================================
   echo "              augmentation, i-vector extraction, and chain model training"
   echo ============================================================================
