@@ -181,14 +181,14 @@ if [ $stage -le 16 ]; then
     --dir=$dir  || exit 1;
 fi
 
-#if [ $stage -le 17 ]; then
-#
-#  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
-#    data/dev_hires_unseen exp/nnet3${nnet3_affix}/extractor \
-#    exp/nnet3${nnet3_affix}/ivectors_dev_hires_unseen
-#
-#  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_nosp_test $dir $dir/graph
-#fi
+if [ $stage -le 17 ]; then
+
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
+    data/dev_hires_unseen exp/nnet3${nnet3_affix}/extractor \
+    exp/nnet3${nnet3_affix}/ivectors_dev_hires_unseen
+
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_nosp_test $dir $dir/graph
+fi
 
 if [ $stage -le 18 ]; then
     steps/nnet3/decode.sh --nj 20 --cmd "$decode_cmd" \

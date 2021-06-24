@@ -1,14 +1,7 @@
 #!/bin/bash
-# chain2 recipe for monolingual systems for BABEL
 # Copyright 2016 Pegah Ghahremani
 # Copyright 2020 Srikanth Madikeri (Idiap Research Institute)
-
-# This script is used to train multilingual LF-MMI system with a multi-task training
-# setup.
-
-# local.conf should exists (check README.txt), which contains configs for
-# multilingual training such as lang_list as array of space-separated languages used
-# for multilingual training.
+# local.conf should exists (check README.txt)
 
 set -e -o pipefail
 
