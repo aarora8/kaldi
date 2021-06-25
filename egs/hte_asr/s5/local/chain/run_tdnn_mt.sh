@@ -12,13 +12,17 @@ train_stage=-10
 get_egs_stage=-10
 decode_stage=-10
 
+# lang directory
+# lang conf
+langdir=data/lang_nosp_test
+langconf=conf/local.conf
+
 use_ivector=true
 megs_dir=
 alidir=tri3_ali
 nj=30
 train_set=train
 gmm=tri3  # the gmm for the target data
-langdir=data/lang_nosp_test
 nnet3_affix=_multi  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 tree_affix=_multi  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
 tdnn_affix=_multi  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
@@ -34,8 +38,7 @@ final_effective_lrate=0.0001
 chunk_width=140,100,160
 extra_left_context=10
 extra_right_context=0
-common_egs_dir=  # you can set this to use previously dumped egs.
-langconf=conf/local.conf
+common_egs_dir=
 
 global_extractor=exp/multi/nnet3/extractor
 dropout_schedule='0,0@0.20,0.5@0.50,0'
@@ -47,18 +50,8 @@ dropout_schedule='0,0@0.20,0.5@0.50,0'
 [ ! -f $langconf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1;
 . $langconf || exit 1;
 
-[ ! -f conf/local.conf ] && echo 'the file local.conf does not exist!' && exit 1;
-. conf/local.conf || exit 1;
-
 num_langs=${#lang_list[@]}
 echo "$0 $@"  # Print the command line for logging
-if ! cuda-compiled; then
-  cat <<EOF && exit 1
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
-If you want to use GPUs (and have them), go to src/, and configure and make on a machine
-where "nvcc" is installed.
-EOF
-fi
 
 for lang_index in `seq 0 $[$num_langs-1]`; do
   for f in data/${lang_list[$lang_index]}/train/{feats.scp,text} exp/${lang_list[$lang_index]}/$alidir/ali.1.gz exp/${lang_list[$lang_index]}/$alidir/tree; do
@@ -417,12 +410,12 @@ if [ $stage -le 20 ]; then
 fi
 
 if [ $stage -le 21 ]; then
-  utils/mkgraph.sh --self-loop-scale 1.0 data/safet/lang exp/chain2_cleaned/tdnn_multi/safet exp/chain2_cleaned/tdnn_multi/safet/graph
+  utils/mkgraph.sh --self-loop-scale 1.0 data/phonemic/lang exp/chain2_cleaned/tdnn_multi/safet exp/chain2_cleaned/tdnn_multi/safet/graph
 fi
 
 if [ $stage -le 22 ]; then
     steps/nnet3/decode.sh --num-threads 4 --nj 20 --cmd "$decode_cmd" \
         --acwt 1.0 --post-decode-acwt 10.0 \
-        --online-ivector-dir exp/ihm/nnet3${nnet3_affix}/ivectors_safe_t_dev1_hires \
-       $dir/graph data/safe_t_dev1_hires $dir/decode_safe_t_dev1 || exit 1;
+        --online-ivector-dir exp/ihm/nnet3${nnet3_affix}/ivectors_dev_hires \
+       $dir/graph data/dev_hires $dir/decode_dev || exit 1;
 fi
