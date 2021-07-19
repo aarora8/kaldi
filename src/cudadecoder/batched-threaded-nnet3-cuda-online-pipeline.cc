@@ -27,6 +27,7 @@
 
 #include <nvToolsExt.h>
 
+#include "cudamatrix/cu-common.h"
 #include "feat/feature-window.h"
 #include "lat/lattice-functions.h"
 #include "nnet3/nnet-utils.h"
@@ -37,6 +38,22 @@ namespace cuda_decoder {
 const double kSleepForCallBack = 10e-3;
 const double kSleepForCpuFeatures = 1e-3;
 const double kSleepForChannelAvailable = 1e-3;
+
+BatchedThreadedNnet3CudaOnlinePipeline::~BatchedThreadedNnet3CudaOnlinePipeline(
+) {
+  // The destructor races with callback completion. Even if all callbacks have
+  // finished, the counter may (non-deterministically) lag behind by a few ms.
+  // Deleting the object when all callbacks had been called is UB: the variable
+  // n_lattice_callbacks_not_done_ is accessed after a callback has returned.
+  WaitForLatticeCallbacks();
+  KALDI_ASSERT(n_lattice_callbacks_not_done_ == 0);
+  KALDI_ASSERT(available_channels_.empty() ||
+               available_channels_.size() == config_.num_channels);
+
+  if (h_all_waveform_.SizeInBytes() > 0) {
+    CU_SAFE_CALL(::cudaHostUnregister(h_all_waveform_.Data()));
+  }
+}
 
 void BatchedThreadedNnet3CudaOnlinePipeline::Initialize(
     const fst::Fst<fst::StdArc> &decode_fst) {
@@ -90,9 +107,8 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
     feature_pipelines_.resize(config_.num_channels);
   }
 
-  // Decoder
-  cuda_fst_ = std::make_shared<CudaFst>();
-  cuda_fst_->Initialize(decode_fst, trans_model_);
+  // Decoder.
+  cuda_fst_ = std::make_unique<CudaFst>(decode_fst, trans_model_);
   cuda_decoder_.reset(new CudaDecoder(*cuda_fst_, config_.decoder_opts,
                                       max_batch_size_, config_.num_channels));
   if (config_.num_decoder_copy_threads > 0) {
@@ -611,7 +627,8 @@ void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(
   n_lattice_callbacks_not_done_.fetch_sub(1, std::memory_order_release);
 }
 
-void BatchedThreadedNnet3CudaOnlinePipeline::WaitForLatticeCallbacks() {
+void BatchedThreadedNnet3CudaOnlinePipeline::WaitForLatticeCallbacks()
+    noexcept {
   while (n_lattice_callbacks_not_done_.load() != 0)
     Sleep(kSleepForCallBack);
 }

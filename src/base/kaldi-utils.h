@@ -121,26 +121,29 @@ void Sleep(double seconds);
           (reinterpret_cast<char*>(&a))[1]=t;} while (0)
 
 
-// Makes copy constructor and operator= private.
+///\brief Declare deleted copy constructor and copy assignment operator=().
+///
+/// Use this macro in the \e public part of a class declaration in a header
+/// file, next to its constructors, so that uncopyability of the type is
+/// clearly readable. Place a semicolon after it.
+///\param type The exact enclosing class name.
 #define KALDI_DISALLOW_COPY_AND_ASSIGN(type)    \
-  type(const type&);                  \
-  void operator = (const type&)
+  type(const type&) = delete;                   \
+  type& operator=(const type&) = delete
 
-template<bool B> class KaldiCompileTimeAssert { };
-template<> class KaldiCompileTimeAssert<true> {
- public:
-  static inline void Check() { }
-};
-
-#define KALDI_COMPILE_TIME_ASSERT(b) KaldiCompileTimeAssert<(b)>::Check()
+#if __cplusplus >= 201703L
+#define KALDI_COMPILE_TIME_ASSERT static_assert
+#else
+#define KALDI_COMPILE_TIME_ASSERT(b) static_assert((b), #b)
+#endif
 
 #define KALDI_ASSERT_IS_INTEGER_TYPE(I) \
-  KaldiCompileTimeAssert<std::numeric_limits<I>::is_specialized \
-                 && std::numeric_limits<I>::is_integer>::Check()
+  KALDI_COMPILE_TIME_ASSERT(std::numeric_limits<I>::is_specialized \
+                            && std::numeric_limits<I>::is_integer)
 
 #define KALDI_ASSERT_IS_FLOATING_TYPE(F) \
-  KaldiCompileTimeAssert<std::numeric_limits<F>::is_specialized \
-                && !std::numeric_limits<F>::is_integer>::Check()
+  KALDI_COMPILE_TIME_ASSERT(std::numeric_limits<F>::is_specialized \
+                            && !std::numeric_limits<F>::is_integer)
 
 #if defined(_MSC_VER)
 #define KALDI_STRCASECMP _stricmp

@@ -15,8 +15,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_CUDADECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
-#define KALDI_CUDADECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
+#ifndef KALDI_CUDADECODER_BATCHED_THREADED_NNET3_CUDA_ONLINE_PIPELINE_H_
+#define KALDI_CUDADECODER_BATCHED_THREADED_NNET3_CUDA_ONLINE_PIPELINE_H_
 
 #if HAVE_CUDA
 
@@ -41,22 +41,21 @@
 namespace kaldi {
 namespace cuda_decoder {
 
-//
-// Online Streaming Batched Pipeline calling feature extraction, CUDA light
-// Nnet3 driver and CUDA decoder. Can handle up to num_channels streaming audio
-// channels in parallel. Each channel is externally identified by a correlation
-// id (corr_id). Receives chunks of audio (up to max_batch_size per DecodeBatch
-// call). Will call a callback with the final lattice once the processing of the
-// final chunk is done.
-//
-// For an example on how to use that pipeline, see
-// cudadecoderbin/batched-threaded-wav-nnet3-online.cc
-//
-// Feature extraction can be CUDA or CPU
-// (multithreaded).
-// Internally reuses the concept of channels and lanes from the CUDA decoder
-//
-
+///\brief Online Streaming Batched Pipeline calling feature extraction, CUDA
+/// light Nnet3 driver and CUDA decoder.
+///
+/// Can handle up to num_channels streaming audio channels in parallel. Each
+/// channel is externally identified by an arbitrary 64-bit correlation ID
+/// (corr_id). Receives chunks of audio (up to max_batch_size per DecodeBatch()
+/// call). Will call a callback with the final lattice once the processing of
+/// the final chunk is done.
+///
+/// For an example on how to use that pipeline, see
+/// cudadecoderbin/batched-threaded-wav-nnet3-online.cc
+///
+/// Feature extraction can be done on GPU, or on a CPU's multithreaded pool.
+///
+/// Internally reuses the concept of channels and lanes from the CUDA decoder.
 struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
   BatchedThreadedNnet3CudaOnlinePipelineConfig()
       : max_batch_size(400),
@@ -67,24 +66,22 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
         use_gpu_feature_extraction(true) {}
   void Register(OptionsItf *po) {
     po->Register("max-batch-size", &max_batch_size,
-                 "The maximum execution batch size. "
-                 "Larger = Better throughput slower latency.");
+                 "The maximum execution batch size."
+                 " Larger = better throughput, but slower latency.");
     po->Register("num-channels", &num_channels,
-                 "The number of parallel audio channels. This is the maximum "
-                 "number of parallel audio channels supported by the pipeline"
-                 ". This should be larger "
-                 "than max_batch_size.");
+                 "The number of parallel audio channels. This is the maximum"
+                 " number of parallel audio channels supported by the pipeline."
+                 " This should be larger than max_batch_size.");
     po->Register("cuda-worker-threads", &num_worker_threads,
-                 "(optional) The total number of CPU threads launched to "
-                 "process CPU tasks. -1 = use std::hardware_concurrency()");
+                 "The total number of CPU threads launched to process CPU"
+                 " tasks. -1 = use std::hardware_concurrency().");
     po->Register("determinize-lattice", &determinize_lattice,
                  "Determinize the lattice before output.");
     po->Register("cuda-decoder-copy-threads", &num_decoder_copy_threads,
-                 "Advanced - Number of worker threads used in the "
-                 "decoder for "
-                 "the host to host copies.");
+                 "Advanced - Number of worker threads used in the"
+                 " decoder for the host to host copies.");
     po->Register("gpu-feature-extract", &use_gpu_feature_extraction,
-                 "Use GPU feature extraction");
+                 "Use GPU feature extraction.");
 
     feature_opts.Register(po);
     decoder_opts.Register(po);
@@ -139,11 +136,12 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
         word_syms_(NULL) {
     config_.compute_opts.CheckAndFixConfigs(am_nnet_->GetNnet().Modulus());
     config_.CheckAndFixConfigs();
-    int num_worker_threads = config_.num_worker_threads;
-    thread_pool_.reset(new ThreadPoolLight(num_worker_threads));
-
     Initialize(decode_fst);
+    int num_worker_threads = config.num_worker_threads;
+    thread_pool_ = std::make_unique<ThreadPoolLight>(num_worker_threads);
   }
+
+  ~BatchedThreadedNnet3CudaOnlinePipeline();
 
   const BatchedThreadedNnet3CudaOnlinePipelineConfig &GetConfig() {
     return config_;
@@ -243,12 +241,17 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
     cuda_decoder_->SetSymbolTable(word_syms);
   }
 
-  // Wait for all lattice callbacks to complete
-  // Can be called after DecodeBatch
-  void WaitForLatticeCallbacks();
+  ///\brief Wait for all lattice callbacks to complete.
+  ///
+  /// The method can be called after DecodeBatch(). The object's destructor
+  /// also calls this method to avoid a race condition between pool threads
+  /// running the callbacks and the instance's destruction. If you do not want
+  /// the destructor to hang for a long time, call this method first. It's safe
+  /// to call it multiple times.
+  void WaitForLatticeCallbacks() noexcept;
 
  private:
-  // Initiliaze this object
+  // Initialize this object.
   void Initialize(const fst::Fst<fst::StdArc> &decode_fst);
 
   // Allocate and initialize data that will be used for computation
@@ -274,9 +277,8 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
                                    const std::vector<int> &n_samples_valid,
                                    const std::vector<bool> &is_last_chunk);
 
-  // Compute features and ivectors for the chunk
-  // curr_batch[element]
-  // CPU function
+  // Compute features and ivectors for the chunk curr_batch[element].
+  // Used when features are computed on the host (CPU) on pool threads.
   void ComputeOneFeature(int element);
 
   static void ComputeOneFeatureWrapper(void *obj, uint64_t element,
@@ -410,13 +412,26 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // Only used if feature extraction is run on the CPU
   std::vector<std::unique_ptr<OnlineNnet2FeaturePipeline>> feature_pipelines_;
 
-  // HCLG graph : CudaFst object is a host object, but contains
-  // data stored in
-  // GPU memory
-  std::shared_ptr<CudaFst> cuda_fst_;
-  std::unique_ptr<CudaDecoder> cuda_decoder_;
+  // Ordering of the cuda_fst_ w.r.t. thread_pool_ and the decoder is important:
+  // order of destruction is bottom-up, opposite to the order of construction.
+  // We want the FST object, which is entirely passive and only frees device
+  // FST representation when destroyed, to survive both the thread pool and the
+  // decoder, which both may perform pending work during destruction. Since no
+  // new work may be fed into this object while it is being destroyed, the
+  // relative order of the latter two is unimportant, but just in case, FST must
+  // stay around until the other two are positively quiescent.
 
+  // HCLG graph. CudaFst is a host object, but owns pointers to the data stored
+  // in GPU memory.
+  std::unique_ptr<CudaFst> cuda_fst_;
+
+  // The thread pool receives data from device and post-processes it. This class
+  // destructor blocks until the thread pool is drained of work items.
   std::unique_ptr<ThreadPoolLight> thread_pool_;
+
+  // The decoder owns thread(s) that reconstruct lattices transferred from the
+  // device in a compacted form as arrays with offsets instead of pointers.
+  std::unique_ptr<CudaDecoder> cuda_decoder_;
 
   // Used for debugging
   const fst::SymbolTable *word_syms_;
@@ -424,8 +439,8 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   std::mutex stdout_m_;
 };
 
-}  // end namespace cuda_decoder
-}  // end namespace kaldi.
+}  // namespace cuda_decoder
+}  // namespace kaldi
 
 #endif  // HAVE_CUDA
-#endif  // KALDI_CUDADECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
+#endif  // KALDI_CUDADECODER_BATCHED_THREADED_NNET3_CUDA_ONLINE_PIPELINE_H_
