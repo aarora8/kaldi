@@ -22,7 +22,7 @@ fi
 
 if [ $stage -le 3 ] ; then
   local/prepare_lm.sh
-  utils/format_lm.sh  data/lang_nosp_test data/local/lm/lm.gz \
+  utils/format_lm.sh  data/lang_nosp_test data/local/lm/lm5.gz \
     data/local/lexicon2.txt  data/lang_nosp_test
 fi
 exit
