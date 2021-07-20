@@ -9,8 +9,7 @@
 # conf/queue.conf to match your queue's configuration.  Search for
 # conf/queue.conf in http://kaldi-asr.org/doc/queue.html for more information,
 # or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
-
-export train_cmd="queue.pl --mem 8G --nodes_rack 4"
-export cmd="queue.pl --mem 8G --nodes_rack 4"
-export decode_cmd="queue.pl --mem 8G --nodes_rack 4"
+export cmd="queue.pl --mem 8G"
+export train_cmd="queue.pl --mem 8G"
+export decode_cmd="queue.pl --mem 8G"
 export gpu_cmd="queue.pl --mem 8G --gpu 1"
